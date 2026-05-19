@@ -2,6 +2,11 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.4.2] - 2026-05-19
+
+### Fixed
+- fix: Stop 훅 $PLUGIN_ROOT 미치환 에러 수정
+
 ## [2.4.1] - 2026-05-19
 
 ### Changed
