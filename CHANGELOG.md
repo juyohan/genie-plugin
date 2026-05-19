@@ -2,6 +2,12 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.4.3] - 2026-05-19
+
+### Fixed
+- fix: install-hooks.js — 구버전 캐시 빈 훅 처리 및 genie 경로 필터 개선
+- fix: hooks.json에 SessionEnd 훅 추가 및 id 필드 동기화
+
 ## [2.4.2] - 2026-05-19
 
 ### Fixed
