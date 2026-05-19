@@ -2,48 +2,53 @@
   "hooks": {
     "PreToolUse": [
       {
+        "id": "genie:pre:bash",
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/pre-bash-dispatcher.js"
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/pre-bash-dispatcher.js"
           }
         ]
       },
       {
+        "id": "genie:pre:write:doc-warning",
         "matcher": "Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:write:doc-file-warning scripts/hooks/doc-file-warning.js standard,strict"
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:write:doc-file-warning scripts/hooks/doc-file-warning.js standard,strict"
           }
         ]
       },
       {
+        "id": "genie:pre:edit-write:suggest-compact",
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:edit-write:suggest-compact scripts/hooks/suggest-compact.js standard,strict"
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:edit-write:suggest-compact scripts/hooks/suggest-compact.js standard,strict"
           }
         ]
       },
       {
+        "id": "genie:pre:config-protection",
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:config-protection scripts/hooks/config-protection.js standard,strict",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:config-protection scripts/hooks/config-protection.js standard,strict",
             "timeout": 5
           }
         ]
       },
       {
+        "id": "genie:pre:gateguard",
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:edit-write:gateguard-fact-force scripts/hooks/gateguard-fact-force.js standard,strict",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:edit-write:gateguard-fact-force scripts/hooks/gateguard-fact-force.js standard,strict",
             "timeout": 5
           }
         ]
@@ -51,74 +56,81 @@
     ],
     "PreCompact": [
       {
+        "id": "genie:pre:compact",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:compact scripts/hooks/pre-compact.js standard,strict"
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:compact scripts/hooks/pre-compact.js standard,strict"
           }
         ]
       }
     ],
     "SessionStart": [
       {
+        "id": "genie:session:start",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/stop-hook-runner.js session:start scripts/hooks/session-start.js minimal,standard,strict 30000"
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js session:start scripts/hooks/session-start.js minimal,standard,strict 30000"
           }
         ]
       }
     ],
     "PostToolUse": [
       {
+        "id": "genie:post:bash",
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/post-bash-dispatcher.js",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/post-bash-dispatcher.js",
             "async": true,
             "timeout": 30
           }
         ]
       },
       {
+        "id": "genie:post:quality-gate",
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:quality-gate scripts/hooks/quality-gate.js standard,strict",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:quality-gate scripts/hooks/quality-gate.js standard,strict",
             "async": true,
             "timeout": 30
           }
         ]
       },
       {
+        "id": "genie:post:design-quality",
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:edit:design-quality-check scripts/hooks/design-quality-check.js strict",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:edit:design-quality-check scripts/hooks/design-quality-check.js strict",
             "timeout": 10
           }
         ]
       },
       {
+        "id": "genie:post:accumulate",
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:edit:accumulate scripts/hooks/post-edit-accumulator.js standard,strict"
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:edit:accumulate scripts/hooks/post-edit-accumulator.js standard,strict"
           }
         ]
       },
       {
+        "id": "genie:post:doc-frontmatter",
         "matcher": "Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/pre-hook-runner.js node scripts/hooks/doc-frontmatter.js",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/doc-frontmatter.js",
             "async": true,
             "timeout": 10
           }
@@ -127,52 +139,57 @@
     ],
     "Stop": [
       {
+        "id": "genie:stop:format-typecheck",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/stop-hook-runner.js stop:format-typecheck scripts/hooks/stop-format-typecheck.js standard,strict 300000",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:format-typecheck scripts/hooks/stop-format-typecheck.js standard,strict 300000",
             "timeout": 300
           }
         ]
       },
       {
+        "id": "genie:stop:check-console-log",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/stop-hook-runner.js stop:check-console-log scripts/hooks/check-console-log.js standard,strict 30000"
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:check-console-log scripts/hooks/check-console-log.js standard,strict 30000"
           }
         ]
       },
       {
+        "id": "genie:stop:session-end",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/stop-hook-runner.js stop:session-end scripts/hooks/session-end.js minimal,standard,strict 30000",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:session-end scripts/hooks/session-end.js minimal,standard,strict 30000",
             "async": true,
             "timeout": 10
           }
         ]
       },
       {
+        "id": "genie:stop:cost-tracker",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/stop-hook-runner.js stop:cost-tracker scripts/hooks/cost-tracker.js minimal,standard,strict 30000",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:cost-tracker scripts/hooks/cost-tracker.js minimal,standard,strict 30000",
             "async": true,
             "timeout": 10
           }
         ]
       },
       {
+        "id": "genie:stop:desktop-notify",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node $PLUGIN_ROOT/scripts/hooks/stop-hook-runner.js stop:desktop-notify scripts/hooks/desktop-notify.js standard,strict 30000",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:desktop-notify scripts/hooks/desktop-notify.js standard,strict 30000",
             "async": true,
             "timeout": 10
           }

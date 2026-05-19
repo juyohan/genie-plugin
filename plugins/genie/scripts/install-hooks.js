@@ -59,6 +59,42 @@ function mergeHooks(settings, pluginHooks) {
   return settings;
 }
 
+function findGenieCachePaths() {
+  const claudeDir = path.join(os.homedir(), '.claude');
+  const paths = [];
+
+  // installed plugin cache — genie 항목만
+  const installedPluginsPath = path.join(claudeDir, 'plugins', 'installed_plugins.json');
+  const installed = loadJson(installedPluginsPath);
+  for (const [key, entries] of Object.entries(installed?.plugins ?? {})) {
+    if (!key.startsWith('genie')) continue;
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      if (entry?.installPath) {
+        const p = path.join(entry.installPath, 'hooks', 'hooks.json');
+        if (fs.existsSync(p)) paths.push(p);
+      }
+    }
+  }
+
+  // john 마켓플레이스의 genie 플러그인만
+  const johnMarketplaceGenie = path.join(
+    claudeDir, 'plugins', 'marketplaces', 'john', 'plugins', 'genie', 'hooks', 'hooks.json'
+  );
+  if (fs.existsSync(johnMarketplaceGenie)) paths.push(johnMarketplaceGenie);
+
+  return paths;
+}
+
+function patchCacheHooksJson(pluginHooks) {
+  const resolved = substitutePluginRoot({ hooks: pluginHooks }, PLUGIN_DIR);
+
+  for (const hooksPath of findGenieCachePaths()) {
+    fs.writeFileSync(hooksPath, JSON.stringify(resolved, null, 2) + '\n');
+    console.log(`  patched: ${hooksPath}`);
+  }
+}
+
 function main() {
   if (!fs.existsSync(HOOKS_SRC)) {
     console.error(`Error: hooks source not found at ${HOOKS_SRC}`);
@@ -84,8 +120,9 @@ function main() {
   const merged = mergeHooks(settings, resolvedHooks);
 
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2) + '\n');
-
   console.log(`\n✅ Hooks merged into ${SETTINGS_PATH}`);
+
+  patchCacheHooksJson(pluginHooks);
 }
 
 main();

@@ -3,7 +3,7 @@
 **Genie**는 Claude Code와 Codex를 위한 Compound Engineering 워크플로우 플러그인입니다.
 아이디어 구체화부터 구현, 리뷰, 지식 자산화까지 — 일관된 단계별 루프로 개발을 진행합니다.
 
-> 버전: **1.6.0** · Claude Code · Codex 지원
+> 버전: **2.4.1** · Claude Code · Codex 지원
 
 ---
 
@@ -56,6 +56,7 @@ cp -R ~/.claude/plugins/genie/rules/* ~/.claude/rules/john/
 | `/genie:strategy` | 전략 정렬 — STRATEGY.md 업데이트 |
 | `/genie:fix` | 디버깅 — 근본 원인 찾고 버그 수정 |
 | `/genie:optimize` | 성능 최적화 — 측정 기반 반복 개선 |
+| `/genie:team` | 팀 소집 — ECC·CE 전문가와 검증자 팀 구성 |
 | `/genie:help` | 커맨드 목록 및 사용법 안내 |
 
 ---
@@ -93,19 +94,33 @@ cp -R ~/.claude/plugins/genie/rules/* ~/.claude/rules/john/
 | `@genie:e2e` | E2E 테스트 (Playwright) |
 | `@genie:review` | 코드 리뷰 |
 | `@genie:architect` | 시스템 설계 |
+| `@genie:perf` | 성능 분석 및 최적화 |
+| `@genie:refactor` | 리팩토링 및 죽은 코드 정리 |
+| `@genie:simplify` | 코드 단순화 |
+| `@genie:tdd` | 테스트 주도 개발 |
+| `@genie:docs` | 문서 업데이트 |
 
 ---
 
 ## 디렉토리 구조
 
 ```
-AGENTS.md         — 에이전트 지침 (Claude Code + Codex 공용)
-CLAUDE.md         — Claude Code 진입점 (@AGENTS.md 로드)
-.claude-plugin/   — 플러그인 메타데이터 (name: genie, version: 1.5.0)
-commands/         — Claude Code 커맨드 정의 (/genie:*)
-agents/           — 전문 에이전트 정의 (@genie:ts, @genie:review 등)
-skills/           — 스킬 구현 로직 (Claude Code + Codex 공용)
-scripts/hooks/    — GateGuard 등 자동화 훅 (Claude Code 전용)
-rules/            — 코딩 규칙 (설치 후 ~/.claude/rules/에 복사)
-docs/             — 워크플로우 산출물 (brainstorms, plans, reviews 등)
+AGENTS.md              — 에이전트 지침 (Claude Code + Codex 공용)
+CLAUDE.md              — Claude Code 진입점 (@AGENTS.md 로드)
+plugins/genie/
+  .codex-plugin/       — 플러그인 메타데이터 (name: genie, version: 2.4.1)
+  commands/            — Claude Code 커맨드 정의 (/genie:*)
+  agents/              — 전문 에이전트 정의 (@genie:ts, @genie:review 등)
+  skills/              — 스킬 구현 로직
+  scripts/hooks/       — GateGuard 등 자동화 훅 (Claude Code 전용)
+rules/                 — 코딩 규칙 (설치 후 ~/.claude/rules/에 복사)
+  common/              — 공통 규칙 (git, testing, security 등)
+  typescript/          — TypeScript 전용 규칙
+  python/              — Python 전용 규칙
+  golang/              — Go 전용 규칙
+  java/                — Java 전용 규칙
+  kotlin/              — Kotlin 전용 규칙
+  swift/               — Swift 전용 규칙
+  web/                 — 웹 프론트엔드 전용 규칙
+docs/                  — 워크플로우 산출물 (brainstorms, plans, reviews 등)
 ```
