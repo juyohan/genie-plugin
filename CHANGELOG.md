@@ -2,6 +2,12 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.4.1] - 2026-05-19
+
+### Changed
+- docs(work): 커밋·푸시 자동 실행 제거 및 프론트엔드 테스트 예외 추가
+- refactor: rewrite review SKILL.md in karpathy style with CE removal
+
 ## [2.4.0] - 2026-05-18
 
 ### Added
