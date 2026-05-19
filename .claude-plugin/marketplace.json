@@ -10,11 +10,13 @@
     {
       "name": "genie",
       "source": {
-        "source": "local",
-        "path": "./plugins/genie"
+        "source": "git-subdir",
+        "url": "https://github.com/juyohan/genie-plugin.git",
+        "path": "plugins/genie",
+        "ref": "main"
       },
       "description": "Custom Engineering OS: Compound Engineering Workflow + Everything Claude Code Tools",
-      "version": "1.8.0",
+      "version": "2.4.1",
       "author": {
         "name": "John"
       },
