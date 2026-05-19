@@ -28,7 +28,7 @@ Interactive 모드 전용. 사용자가 라우팅 질문에서 옵션 A를 선�
 
 **What's wrong**
 
-{why_it_matters — /tmp/compound-engineering/review/{run_id}/{reviewer_name}.json에서 조회}
+{why_it_matters — /tmp/genie/review/{run_id}/{reviewer_name}.json에서 조회}
 
 **Proposed fix**
 
@@ -46,7 +46,7 @@ Interactive 모드 전용. 사용자가 라우팅 질문에서 옵션 A를 선�
 - 백틱 스팬 앞뒤 공백 필수
 - 5줄 이하 순수 추가 코드는 raw 코드 블록 허용
 - diff 블록 금지
-- 포착 불가 시: 한 문장 변환 설명 + `Full fix: /tmp/compound-engineering/review/{run_id}/{reviewer_name}.json → findings[].suggested_fix`
+- 포착 불가 시: 한 문장 변환 설명 + `Full fix: /tmp/genie/review/{run_id}/{reviewer_name}.json → findings[].suggested_fix`
 
 아티팩트 매치 없으면: 제목 + `suggested_fix`만 렌더링 (`What's wrong`, `Why it works` 생략). 완료 보고서 Coverage에 공백 기록.
 

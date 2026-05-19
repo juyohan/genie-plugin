@@ -72,6 +72,16 @@
 > **Fix order:** P0 auth bypass -> P1 memory/pagination -> P2 error handling
 ```
 
+## Interactive 모드 저장 경로
+
+최종 보고서를 `docs/reviews/YYYY/MM/DD-<제목>.md`에 저장합니다.
+
+```bash
+mkdir -p docs/reviews/$(date +%Y/%m)
+```
+
+파일명 예시: `docs/reviews/2026/05/19-auth-middleware-refactor.md`
+
 ## 포맷 규칙
 
 - **파이프 구분 테이블** — ASCII 박스 문자나 가로선 구분 금지 (판정 전 보고서 수준 `---`는 유지)
@@ -88,9 +98,75 @@
 
 ## Headless 모드 포맷
 
-`mode:headless`에서는 파이프 테이블 대신 구조화된 텍스트 엔벨로프 사용:
-- 발견 사항: `[severity][autofix_class -> owner] File: <file:line> -- <title>` + 들여쓴 Why/Evidence/Suggested fix
-- autofix_class별 그룹화 (gated-auto, manual, advisory), 각 그룹 내 심각도순 정렬
-- 판정은 출력 상단 헤더에 위치
-- `requires_verification: true` 발견 사항에 `[needs-verification]` 마커
-- 마지막 라인: "Review complete"
+`mode:headless`에서는 파이프 테이블 대신 아래 구조화된 텍스트 엔벨로프를 사용합니다.
+
+```
+Code review complete (headless mode).
+
+Scope: <scope-line>
+Intent: <intent-summary>
+Reviewers: <reviewer-list with conditional justifications>
+Verdict: <Ready to merge | Ready with fixes | Not ready>
+Artifact: /tmp/genie/review/<run-id>/
+
+Applied N safe_auto fixes.
+
+Gated-auto findings (concrete fix, changes behavior/contracts):
+
+[P1][gated_auto -> downstream-resolver][needs-verification] File: <file:line> -- <title> (<reviewer>, confidence <N>)
+  Why: <why_it_matters>
+  Suggested fix: <suggested_fix or "none">
+  Evidence: <evidence[0]>
+
+Manual findings (actionable, needs handoff):
+
+[P1][manual -> downstream-resolver] File: <file:line> -- <title> (<reviewer>, confidence <N>)
+  Why: <why_it_matters>
+
+Advisory findings (report-only):
+
+[P2][advisory -> human] File: <file:line> -- <title> (<reviewer>, confidence <N>)
+  Why: <why_it_matters>
+
+Pre-existing issues:
+
+[P2][gated_auto -> downstream-resolver] File: <file:line> -- <title> (<reviewer>, confidence <N>)
+  Why: <why_it_matters>
+
+Residual risks:
+- <risk>
+
+Learnings & Past Solutions:
+- <learning>
+
+Agent-Native Gaps:
+- <gap description>
+
+Schema Drift Check:
+- <drift status>
+
+Deployment Notes:
+- <deployment note>
+
+Testing gaps:
+- <gap>
+
+Coverage:
+- Suppressed: <N> findings below anchor 75 (P0 at anchor 50+ retained)
+- Mode-aware demotion suppressions: <N>
+- Validator drops: <N> findings rejected by Stage 5b validator
+  - <file:line> -- <reason>
+- Validator over-budget drops: <N>
+- Failed reviewers: <reviewer>
+
+Review complete
+```
+
+**추가 포맷 규칙:**
+
+- `[needs-verification]`은 `requires_verification: true`인 발견 사항에만 표시
+- `owner: release` → Advisory 섹션에 포함
+- `pre_existing: true` → Pre-existing 섹션에 포함
+- 0개 항목 섹션 생략
+- 모든 리뷰어 실패 시: `Code review degraded (headless mode). Reason: 0 of N reviewers returned results.` 후 "Review complete"
+- `Why:`/`Evidence:` 상세 정보 → 결과물 파일에서 로드. `Suggested fix:` → 압축 반환값에서 직접. 매칭: `file + line_bucket(line,±3)`, 제목으로 타이브레이크. 일치 없으면 해당 줄 생략 후 Coverage에 기록
