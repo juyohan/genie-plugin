@@ -59,11 +59,11 @@ function mergeHooks(settings, pluginHooks) {
   return settings;
 }
 
-function findGenieCachePaths() {
+function getInstalledGeniePaths() {
   const claudeDir = path.join(os.homedir(), '.claude');
   const paths = [];
 
-  // installed plugin cache — genie 항목만
+  // 현재 설치된 genie 버전만 (installed_plugins.json 기준)
   const installedPluginsPath = path.join(claudeDir, 'plugins', 'installed_plugins.json');
   const installed = loadJson(installedPluginsPath);
   for (const [key, entries] of Object.entries(installed?.plugins ?? {})) {
@@ -77,7 +77,7 @@ function findGenieCachePaths() {
     }
   }
 
-  // john 마켓플레이스의 genie 플러그인만
+  // john 마켓플레이스의 genie 플러그인
   const johnMarketplaceGenie = path.join(
     claudeDir, 'plugins', 'marketplaces', 'john', 'plugins', 'genie', 'hooks', 'hooks.json'
   );
@@ -86,13 +86,50 @@ function findGenieCachePaths() {
   return paths;
 }
 
+function emptyObsoleteGenieCaches() {
+  const claudeDir = path.join(os.homedir(), '.claude');
+  const installedPluginsPath = path.join(claudeDir, 'plugins', 'installed_plugins.json');
+  const installed = loadJson(installedPluginsPath);
+
+  // 현재 설치된 installPath 목록
+  const installedPaths = new Set();
+  for (const entries of Object.values(installed?.plugins ?? {})) {
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      if (entry?.installPath) installedPaths.add(entry.installPath);
+    }
+  }
+
+  // john 캐시에서 genie 계열 중 미설치 버전 → 빈 훅으로
+  const johnCacheDir = path.join(claudeDir, 'plugins', 'cache', 'john');
+  if (!fs.existsSync(johnCacheDir)) return;
+
+  for (const plugin of fs.readdirSync(johnCacheDir)) {
+    if (!plugin.startsWith('genie')) continue;
+    const pluginDir = path.join(johnCacheDir, plugin);
+    if (!fs.statSync(pluginDir).isDirectory()) continue;
+    for (const version of fs.readdirSync(pluginDir)) {
+      const versionPath = path.join(pluginDir, version);
+      if (installedPaths.has(versionPath)) continue; // 현재 설치 버전은 건너뜀
+      const hooksPath = path.join(versionPath, 'hooks', 'hooks.json');
+      if (!fs.existsSync(hooksPath)) continue;
+      const current = fs.readFileSync(hooksPath, 'utf8').trim();
+      if (current === '{"hooks":{}}') continue; // 이미 비워져 있음
+      fs.writeFileSync(hooksPath, '{"hooks":{}}\n');
+      console.log(`  emptied obsolete: ${hooksPath}`);
+    }
+  }
+}
+
 function patchCacheHooksJson(pluginHooks) {
   const resolved = substitutePluginRoot({ hooks: pluginHooks }, PLUGIN_DIR);
 
-  for (const hooksPath of findGenieCachePaths()) {
+  for (const hooksPath of getInstalledGeniePaths()) {
     fs.writeFileSync(hooksPath, JSON.stringify(resolved, null, 2) + '\n');
     console.log(`  patched: ${hooksPath}`);
   }
+
+  emptyObsoleteGenieCaches();
 }
 
 function main() {
