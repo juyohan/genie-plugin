@@ -1,25 +1,10 @@
 #!/usr/bin/env node
 'use strict';
 
+const { isInsideMux, detectMux, getMuxHint } = require('../lib/mux');
+
 const MAX_STDIN = 1024 * 1024;
 let raw = '';
-
-function isInsideMux() {
-  return Boolean(process.env.TMUX || process.env.CMUX_SHELL_INTEGRATION);
-}
-
-function getMuxHint() {
-  if (process.env.CMUX_BUNDLED_CLI_PATH) {
-    return [
-      '[Hook] Consider running in cmux for session persistence',
-      '[Hook] cmux new-workspace --name dev  |  or open a new cmux workspace',
-    ].join('\n');
-  }
-  return [
-    '[Hook] Consider running in tmux for session persistence',
-    '[Hook] tmux new -s dev  |  tmux attach -t dev',
-  ].join('\n');
-}
 
 function run(rawInput) {
   try {
@@ -33,7 +18,7 @@ function run(rawInput) {
     ) {
       return {
         stdout: typeof rawInput === 'string' ? rawInput : JSON.stringify(rawInput),
-        stderr: getMuxHint(),
+        stderr: getMuxHint(detectMux()),
         exitCode: 0,
       };
     }

@@ -146,9 +146,8 @@ function findTerminalTTY() {
  * handle the notification instead.
  */
 function isUnderMultiplexer() {
-  if (process.env.TMUX) return true;
-  const term = process.env.TERM || '';
-  return /^screen/.test(term) || /^tmux/.test(term);
+  const { isInsideMux } = require('../lib/mux');
+  return isInsideMux();
 }
 
 /**
