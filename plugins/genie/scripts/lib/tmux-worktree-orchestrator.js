@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { detectMux, hasSession, killSession, assertMuxAvailable, cmuxWorkerWorkspaceName, killCmuxSession } = require('./mux');
 
 function slugify(value, fallback = 'worker') {
   const normalized = String(value || '')
@@ -250,6 +251,8 @@ function buildOrchestrationPlan(config = {}) {
     };
   });
 
+  // 디버깅/미리보기 전용. executePlan은 이 배열을 실행하지 않고 직접 처리한다.
+  // <pane-id>가 포함된 항목은 실행 시점에만 알 수 있으므로 직접 실행 불가.
   const tmuxCommands = [
     {
       cmd: 'tmux',
@@ -284,7 +287,7 @@ function buildOrchestrationPlan(config = {}) {
       {
         cmd: 'tmux',
         args: ['select-pane', '-t', '<pane-id>', '-T', workerPlan.workerSlug],
-        description: `Label pane ${workerPlan.workerSlug}`
+        description: `Label pane ${workerPlan.workerSlug} (pane-id resolved at runtime)`
       },
       {
         cmd: 'tmux',
@@ -295,7 +298,7 @@ function buildOrchestrationPlan(config = {}) {
           `cd ${shellQuote(workerPlan.worktreePath)} && ${workerPlan.launchCommand}`,
           'C-m'
         ],
-        description: `Launch worker ${workerPlan.workerName}`
+        description: `Launch worker ${workerPlan.workerName} (pane-id resolved at runtime)`
       }
     );
   }
@@ -390,13 +393,14 @@ function listWorktrees(repoRoot) {
 function cleanupExisting(plan) {
   runCommand('git', ['worktree', 'prune', '--expire', 'now'], { cwd: plan.repoRoot });
 
-  const hasSession = spawnSync('tmux', ['has-session', '-t', plan.sessionName], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-
-  if (hasSession.status === 0) {
-    runCommand('tmux', ['kill-session', '-t', plan.sessionName], { cwd: plan.repoRoot });
+  const mux = detectMux();
+  if (mux) {
+    const workerSlugs = plan.workerPlans.map(w => w.workerSlug);
+    if (mux.type === 'cmux') {
+      killCmuxSession(mux, plan.sessionName, workerSlugs);
+    } else if (hasSession(mux, plan.sessionName)) {
+      killSession(mux, plan.sessionName);
+    }
   }
 
   for (const workerPlan of plan.workerPlans) {
@@ -431,7 +435,15 @@ function rollbackCreatedResources(plan, createdState, runtime = {}) {
 
   if (createdState.sessionCreated) {
     try {
-      runCommandImpl('tmux', ['kill-session', '-t', plan.sessionName], { cwd: plan.repoRoot });
+      const mux = detectMux();
+      if (mux) {
+        const workerSlugs = createdState.createdWorkerSlugs;
+        if (mux.type === 'cmux') {
+          killCmuxSession(mux, plan.sessionName, workerSlugs);
+        } else {
+          killSession(mux, plan.sessionName);
+        }
+      }
     } catch (error) {
       errors.push(error.message);
     }
@@ -489,21 +501,21 @@ function executePlan(plan, runtime = {}) {
   const createdState = {
     workerPlans: [],
     sessionCreated: false,
+    createdWorkerSlugs: [],
     removeCoordinationDir: !fs.existsSync(plan.coordinationDir)
   };
 
   runCommandImpl('git', ['rev-parse', '--is-inside-work-tree'], { cwd: plan.repoRoot });
-  runCommandImpl('tmux', ['-V']);
+
+  const mux = detectMux();
+  if (!mux) throw new Error('No terminal multiplexer found (tmux or cmux required)');
+  assertMuxAvailable(mux);
 
   if (plan.replaceExisting) {
     cleanupExistingImpl(plan);
   } else {
-    const hasSession = spawnSyncImpl('tmux', ['has-session', '-t', plan.sessionName], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-    if (hasSession.status === 0) {
-      throw new Error(`tmux session already exists: ${plan.sessionName}`);
+    if (hasSession(mux, plan.sessionName)) {
+      throw new Error(`${mux.type} session already exists: ${plan.sessionName}`);
     }
   }
 
@@ -520,51 +532,59 @@ function executePlan(plan, runtime = {}) {
       });
     }
 
-    runCommandImpl(
-      'tmux',
-      ['new-session', '-d', '-s', plan.sessionName, '-n', 'orchestrator', '-c', plan.repoRoot],
-      { cwd: plan.repoRoot }
-    );
-    createdState.sessionCreated = true;
-    runCommandImpl(
-      'tmux',
-      [
-        'send-keys',
-        '-t',
-        plan.sessionName,
-        buildSessionBannerCommand(plan.sessionName, plan.coordinationDir),
-        'C-m'
-      ],
-      { cwd: plan.repoRoot }
-    );
+    if (mux.type === 'cmux') {
+      // cmux: 메인 워크스페이스 + 워커별 개별 워크스페이스
+      runCommandImpl(mux.bin, ['new-workspace', '--name', plan.sessionName, '--cwd', plan.repoRoot, '--no-focus'], { cwd: plan.repoRoot });
+      createdState.sessionCreated = true;
+      runCommandImpl(mux.bin, ['send', '--workspace', plan.sessionName, buildSessionBannerCommand(plan.sessionName, plan.coordinationDir) + '\n'], { cwd: plan.repoRoot });
 
-    for (const workerPlan of plan.workerPlans) {
-      const splitResult = runCommandImpl(
-        'tmux',
-        ['split-window', '-d', '-P', '-F', '#{pane_id}', '-t', plan.sessionName, '-c', workerPlan.worktreePath],
-        { cwd: plan.repoRoot }
-      );
-      const paneId = splitResult.stdout.trim();
-
-      if (!paneId) {
-        throw new Error(`tmux split-window did not return a pane id for ${workerPlan.workerName}`);
+      for (const workerPlan of plan.workerPlans) {
+        const workerWorkspace = cmuxWorkerWorkspaceName(plan.sessionName, workerPlan.workerSlug);
+        runCommandImpl(
+          mux.bin,
+          [
+            'new-workspace',
+            '--name', workerWorkspace,
+            '--cwd', workerPlan.worktreePath,
+            // --cwd가 셸 시작 시 cwd를 보장하지 않을 수 있으므로 cd로 재확인
+            '--command', `cd ${shellQuote(workerPlan.worktreePath)} && ${workerPlan.launchCommand}`,
+            '--no-focus'
+          ],
+          { cwd: plan.repoRoot }
+        );
+        createdState.createdWorkerSlugs.push(workerPlan.workerSlug);
       }
-
-      runCommandImpl('tmux', ['select-layout', '-t', plan.sessionName, 'tiled'], { cwd: plan.repoRoot });
-      runCommandImpl('tmux', ['select-pane', '-t', paneId, '-T', workerPlan.workerSlug], {
-        cwd: plan.repoRoot
-      });
+    } else {
+      // tmux: 기존 로직 (단일 세션 + pane 분할)
       runCommandImpl(
         'tmux',
-        [
-          'send-keys',
-          '-t',
-          paneId,
-          `cd ${shellQuote(workerPlan.worktreePath)} && ${workerPlan.launchCommand}`,
-          'C-m'
-        ],
+        ['new-session', '-d', '-s', plan.sessionName, '-n', 'orchestrator', '-c', plan.repoRoot],
         { cwd: plan.repoRoot }
       );
+      createdState.sessionCreated = true;
+      runCommandImpl(
+        'tmux',
+        ['send-keys', '-t', plan.sessionName, buildSessionBannerCommand(plan.sessionName, plan.coordinationDir), 'C-m'],
+        { cwd: plan.repoRoot }
+      );
+
+      for (const workerPlan of plan.workerPlans) {
+        const splitResult = runCommandImpl(
+          'tmux',
+          ['split-window', '-d', '-P', '-F', '#{pane_id}', '-t', plan.sessionName, '-c', workerPlan.worktreePath],
+          { cwd: plan.repoRoot }
+        );
+        const paneId = splitResult.stdout.trim();
+        if (!paneId) throw new Error(`tmux split-window did not return a pane id for ${workerPlan.workerName}`);
+
+        runCommandImpl('tmux', ['select-layout', '-t', plan.sessionName, 'tiled'], { cwd: plan.repoRoot });
+        runCommandImpl('tmux', ['select-pane', '-t', paneId, '-T', workerPlan.workerSlug], { cwd: plan.repoRoot });
+        runCommandImpl(
+          'tmux',
+          ['send-keys', '-t', paneId, `cd ${shellQuote(workerPlan.worktreePath)} && ${workerPlan.launchCommand}`, 'C-m'],
+          { cwd: plan.repoRoot }
+        );
+      }
     }
   } catch (error) {
     try {

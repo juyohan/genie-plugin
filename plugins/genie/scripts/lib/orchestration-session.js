@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { detectMux } = require('./mux');
 
 function stripCodeTicks(value) {
   if (typeof value !== 'string') {
@@ -156,6 +157,13 @@ function loadWorkerSnapshots(coordinationDir) {
 
 function listTmuxPanes(sessionName, options = {}) {
   const { spawnSyncImpl = spawnSync } = options;
+  const mux = detectMux();
+
+  // cmux는 pane 포맷 조회를 지원하지 않으므로 빈 배열 반환
+  if (mux && mux.type === 'cmux') {
+    return [];
+  }
+
   const format = [
     '#{pane_id}',
     '#{window_index}',
@@ -248,7 +256,12 @@ function resolveSnapshotTarget(targetPath, cwd = process.cwd()) {
   const absoluteTarget = path.resolve(cwd, targetPath);
 
   if (fs.existsSync(absoluteTarget) && fs.statSync(absoluteTarget).isFile()) {
-    const config = JSON.parse(fs.readFileSync(absoluteTarget, 'utf8'));
+    let config;
+    try {
+      config = JSON.parse(fs.readFileSync(absoluteTarget, 'utf8'));
+    } catch (parseError) {
+      throw new Error(`Failed to parse plan file ${absoluteTarget}: ${parseError.message}`);
+    }
     const repoRoot = path.resolve(config.repoRoot || cwd);
     const coordinationRoot = path.resolve(
       config.coordinationRoot || path.join(repoRoot, '.orchestration')

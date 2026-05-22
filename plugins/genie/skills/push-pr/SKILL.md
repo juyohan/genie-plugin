@@ -171,11 +171,10 @@ PR 확인 결과가 `state: OPEN`이면 URL을 기록합니다. 이는 기존 PR
    )"
    ```
 
-### 단계 5: 푸시 (Push)
+### 단계 5: 스마트 푸시 (Smart Push)
 
-```bash
-git push -u origin HEAD
-```
+`skills/push/SKILL.md`를 읽고 해당 스킬의 전체 워크플로우를 실행하십시오.
+push 완료 후 이 스킬의 단계 6으로 이동합니다.
 
 ### 단계 6: PR 제목 및 본문 생성
 

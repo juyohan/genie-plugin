@@ -13,6 +13,8 @@
  *   4. CMUX_BUNDLED_CLI_PATH   → cmux (fallback)
  */
 
+const fs = require('fs');
+const path = require('path');
 const { spawnSync } = require('child_process');
 
 /**
@@ -54,7 +56,8 @@ function sh(value) {
 function hasSession(mux, name) {
   if (mux.type === 'cmux') {
     const result = spawnSync(mux.bin, ['list-workspaces'], { encoding: 'utf8' });
-    return result.status === 0 && result.stdout.includes(name);
+    if (result.status !== 0) return false;
+    return (result.stdout || '').split('\n').map(l => l.trim()).includes(name);
   }
   return spawnSync(mux.bin, ['has-session', '-t', name], { encoding: 'utf8' }).status === 0;
 }
@@ -132,6 +135,43 @@ function getMuxHint(mux) {
   ].join('\n');
 }
 
+/**
+ * 멀티플렉서가 사용 가능한지 확인합니다. (orchestrator 사전 검증용)
+ * tmux: `tmux -V` / cmux: bin 경로 존재 여부
+ */
+function assertMuxAvailable(mux) {
+  if (mux.type === 'tmux') {
+    const result = spawnSync(mux.bin, ['-V'], { encoding: 'utf8' });
+    if (result.status !== 0) throw new Error('tmux is not available');
+  } else if (path.isAbsolute(mux.bin)) {
+    if (!fs.existsSync(mux.bin)) throw new Error(`cmux not found: ${mux.bin}`);
+  } else {
+    const result = spawnSync('which', [mux.bin], { encoding: 'utf8' });
+    if (result.status !== 0) throw new Error(`cmux not found in PATH: ${mux.bin}`);
+  }
+}
+
+/**
+ * cmux 환경에서 워커 워크스페이스 이름을 생성합니다.
+ * 형식: "<sessionName>-<workerSlug>"
+ */
+function cmuxWorkerWorkspaceName(sessionName, workerSlug) {
+  return `${sessionName}-${workerSlug}`;
+}
+
+/**
+ * cmux 환경에서 모든 관련 워크스페이스를 종료합니다.
+ * (워커 워크스페이스 먼저, 메인 마지막)
+ * workerSlugs는 반드시 명시적으로 전달해야 합니다 (기본값 없음).
+ * 생성된 워커만 전달해야 고아 close-workspace 호출을 방지할 수 있습니다.
+ */
+function killCmuxSession(mux, sessionName, workerSlugs) {
+  for (const slug of workerSlugs) {
+    spawnSync(mux.bin, ['close-workspace', '--workspace', cmuxWorkerWorkspaceName(sessionName, slug)], { encoding: 'utf8' });
+  }
+  spawnSync(mux.bin, ['close-workspace', '--workspace', sessionName], { encoding: 'utf8' });
+}
+
 module.exports = {
   detectMux,
   isInsideMux,
@@ -141,4 +181,7 @@ module.exports = {
   sendKeys,
   buildNewSessionShellCommand,
   getMuxHint,
+  assertMuxAvailable,
+  cmuxWorkerWorkspaceName,
+  killCmuxSession,
 };
