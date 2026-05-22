@@ -151,6 +151,17 @@
         ]
       },
       {
+        "id": "genie:post:hooks-auto-sync",
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/hooks-auto-sync.js",
+            "timeout": 15
+          }
+        ]
+      },
+      {
         "id": "genie:post:doc-frontmatter",
         "matcher": "Write",
         "hooks": [
