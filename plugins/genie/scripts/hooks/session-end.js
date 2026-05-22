@@ -37,11 +37,13 @@ const SESSION_SEPARATOR = '\n---\n';
  * - Tools used
  * - Files modified
  */
-function extractSessionSummary(transcriptPath) {
+function extractSessionSummary(transcriptPath, startLine = 0) {
   const content = readFile(transcriptPath);
   if (!content) return null;
 
-  const lines = content.split('\n').filter(Boolean);
+  const allLines = content.split('\n').filter(Boolean);
+  const lines = startLine > 0 ? allLines.slice(startLine) : allLines;
+  const totalLines = allLines.length;
   const userMessages = [];
   const toolsUsed = new Set();
   const filesModified = new Set();
@@ -100,14 +102,97 @@ function extractSessionSummary(transcriptPath) {
     log(`[SessionEnd] Skipped ${parseErrors}/${lines.length} unparseable transcript lines`);
   }
 
-  if (userMessages.length === 0) return null;
+  if (userMessages.length === 0 && toolsUsed.size === 0) return null;
 
   return {
-    userMessages: userMessages.slice(-10), // Last 10 user messages
+    userMessages: userMessages.slice(-5),
     toolsUsed: Array.from(toolsUsed).slice(0, 20),
     filesModified: Array.from(filesModified).slice(0, 30),
-    totalMessages: userMessages.length
+    totalMessages: userMessages.length,
+    totalLines,
   };
+}
+
+function getStateFile(sessionFile) {
+  return `${sessionFile}.state.json`;
+}
+
+function loadParseState(sessionFile) {
+  try {
+    const stateFile = getStateFile(sessionFile);
+    if (fs.existsSync(stateFile)) {
+      const parsed = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+      return {
+        lastParsedLines: typeof parsed.lastParsedLines === 'number' ? parsed.lastParsedLines : 0,
+        mergedSummary: parsed.mergedSummary || null,
+      };
+    }
+  } catch {}
+  return { lastParsedLines: 0, mergedSummary: null };
+}
+
+function saveParseState(sessionFile, lastParsedLines, mergedSummary) {
+  const stateFile = getStateFile(sessionFile);
+  const tmpFile = `${stateFile}.tmp.${process.pid}`;
+  try {
+    fs.writeFileSync(tmpFile, JSON.stringify({ lastParsedLines, mergedSummary }, null, 2), 'utf8');
+    fs.renameSync(tmpFile, stateFile);
+  } catch {
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
+}
+
+function mergeSummaries(prev, delta) {
+  if (!prev) return delta;
+  if (!delta) return prev;
+
+  // Deduplicate userMessages by content to handle concurrent Stop invocations
+  const seen = new Set();
+  const messages = [...(prev.userMessages || []), ...(delta.userMessages || [])]
+    .filter(msg => {
+      if (seen.has(msg)) return false;
+      seen.add(msg);
+      return true;
+    })
+    .slice(-5);
+
+  return {
+    userMessages: messages,
+    toolsUsed: Array.from(new Set([...(prev.toolsUsed || []), ...(delta.toolsUsed || [])])).slice(0, 20),
+    filesModified: Array.from(new Set([...(prev.filesModified || []), ...(delta.filesModified || [])])).slice(0, 30),
+    totalMessages: (prev.totalMessages || 0) + (delta.totalMessages || 0),
+  };
+}
+
+function acquireStateLock(sessionFile, maxWaitMs = 2000) {
+  const lockPath = `${getStateFile(sessionFile)}.lock`;
+  const deadline = Date.now() + maxWaitMs;
+
+  while (Date.now() < deadline) {
+    try {
+      fs.writeFileSync(lockPath, String(process.pid), { flag: 'wx' });
+      return lockPath;
+    } catch (err) {
+      if (err.code !== 'EEXIST') break;
+      try {
+        const lockAge = Date.now() - fs.statSync(lockPath).mtimeMs;
+        if (lockAge > 30000) {
+          fs.unlinkSync(lockPath);
+          continue;
+        }
+      } catch {}
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+    }
+  }
+
+  log('[SessionEnd] Warning: could not acquire state lock, proceeding without synchronization');
+  return null;
+}
+
+function releaseStateLock(lockPath) {
+  if (lockPath) {
+    try { fs.unlinkSync(lockPath); } catch {}
+  }
 }
 
 // Read hook input from stdin (Claude Code provides transcript_path via stdin JSON)
@@ -225,15 +310,31 @@ async function main() {
 
   const currentTime = getTimeString();
 
-  // Try to extract summary from transcript
-  let summary = null;
+  // Incremental parsing: only parse new lines since last run
+  const stateLockPath = acquireStateLock(sessionFile);
+  let summary;
+  try {
+    const parseState = loadParseState(sessionFile);
+    summary = parseState.mergedSummary;
 
-  if (transcriptPath) {
-    if (fs.existsSync(transcriptPath)) {
-      summary = extractSessionSummary(transcriptPath);
-    } else {
-      log(`[SessionEnd] Transcript not found: ${transcriptPath}`);
+    if (transcriptPath) {
+      if (fs.existsSync(transcriptPath)) {
+        const delta = extractSessionSummary(transcriptPath, parseState.lastParsedLines);
+        if (delta) {
+          summary = mergeSummaries(parseState.mergedSummary, delta);
+          if (stateLockPath !== null) {
+            saveParseState(sessionFile, delta.totalLines, summary);
+            log(`[SessionEnd] Parsed lines ${parseState.lastParsedLines}~${delta.totalLines} (delta: ${delta.totalLines - parseState.lastParsedLines})`);
+          } else {
+            log(`[SessionEnd] Skipped state save due to lock contention (lines ${parseState.lastParsedLines}~${delta.totalLines} will be re-parsed next run)`);
+          }
+        }
+      } else {
+        log(`[SessionEnd] Transcript not found: ${transcriptPath}`);
+      }
     }
+  } finally {
+    releaseStateLock(stateLockPath);
   }
 
   if (fs.existsSync(sessionFile)) {
@@ -287,7 +388,45 @@ async function main() {
     log(`[SessionEnd] Created session file: ${sessionFile}`);
   }
 
+  // Update task tracking from files modified this session
+  if (summary) {
+    updateTasksFromSummary(summary, process.cwd());
+  }
+
   process.exit(0);
+}
+
+function updateTasksFromSummary(summary, cwd) {
+  try {
+    const {
+      readTasks,
+      writeTasks,
+      upsertTask,
+      extractTitleFromDocPath,
+      inferStageFromDocPath,
+    } = require('../lib/task-tracker');
+
+    let tasks = readTasks(cwd);
+    let changed = false;
+
+    for (const filePath of summary.filesModified || []) {
+      const stage = inferStageFromDocPath(filePath);
+      const title = extractTitleFromDocPath(filePath);
+      if (!stage || !title) continue;
+
+      const before = tasks.length;
+      const beforeJson = JSON.stringify(tasks);
+      tasks = upsertTask(tasks, title, stage);
+      if (JSON.stringify(tasks) !== beforeJson) changed = true;
+    }
+
+    if (changed) {
+      writeTasks(tasks, cwd);
+      log(`[SessionEnd] Updated task tracking (${tasks.length} task(s))`);
+    }
+  } catch (err) {
+    log(`[SessionEnd] Warning: task tracking update failed: ${err.message}`);
+  }
 }
 
 function buildSummarySection(summary) {
@@ -300,11 +439,14 @@ function buildSummarySection(summary) {
   }
 
   // Tasks (from user messages — collapse newlines and escape backticks to prevent markdown breaks)
-  section += '### Tasks\n';
-  for (const msg of summary.userMessages) {
-    section += `- ${msg.replace(/\n/g, ' ').replace(/`/g, '\\`')}\n`;
+  const previousMessages = summary.userMessages.slice(0, -1);
+  if (previousMessages.length > 0) {
+    section += '### Tasks\n';
+    for (const msg of previousMessages) {
+      section += `- ${msg.replace(/\n/g, ' ').replace(/`/g, '\\`')}\n`;
+    }
+    section += '\n';
   }
-  section += '\n';
 
   // Files modified
   if (summary.filesModified.length > 0) {

@@ -100,7 +100,13 @@
       "Bash(gh search *)",
       "Bash(gh repo *)",
       "Bash(claude --version)",
-      "Bash(grep -n 'PLUGIN_ROOT\\\\|$PLUGIN' /Users/juyohan/.claude/settings.json)"
+      "Bash(grep -n 'PLUGIN_ROOT\\\\|$PLUGIN' /Users/juyohan/.claude/settings.json)",
+      "Bash(GENIE_OBSERVE_PHASE=pre node plugins/genie/scripts/hooks/observe.js)",
+      "Bash(GENIE_OBSERVE_PHASE=post node plugins/genie/scripts/hooks/observe.js)",
+      "Bash(grep -v \"test-session-123\" ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)",
+      "Bash(mv /tmp/obs_clean.jsonl ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)",
+      "Bash(grep -v \"verify-test\" ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)",
+      "Bash(mv /tmp/obs_clean2.jsonl ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)"
     ]
   }
 }

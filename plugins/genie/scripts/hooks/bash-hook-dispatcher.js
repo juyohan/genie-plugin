@@ -4,12 +4,9 @@
 const { isHookEnabled } = require('../lib/hook-flags');
 
 const { run: runBlockNoVerify } = require('./block-no-verify');
-const { run: runAutoTmuxDev } = require('./auto-tmux-dev');
-const { run: runTmuxReminder } = require('./pre-bash-tmux-reminder');
 const { run: runGitPushReminder } = require('./pre-bash-git-push-reminder');
 const { run: runCommitQuality } = require('./pre-bash-commit-quality');
 const { run: runGateGuard } = require('./gateguard-fact-force');
-const { run: runAutoVersionBump } = require('./pre-bash-auto-version-bump');
 const { run: runCommandLog } = require('./post-bash-command-log');
 const { run: runPrCreated } = require('./post-bash-pr-created');
 const { run: runBuildComplete } = require('./post-bash-build-complete');
@@ -17,61 +14,49 @@ const { run: runBuildComplete } = require('./post-bash-build-complete');
 const MAX_STDIN = 1024 * 1024;
 
 const PRE_BASH_HOOKS = [
+  // 필수 훅
   {
     id: 'pre:bash:block-no-verify',
     profiles: 'minimal,standard,strict',
+    matcher: /--no-verify/,
     run: rawInput => runBlockNoVerify(rawInput),
-  },
-  {
-    id: 'pre:bash:auto-tmux-dev',
-    profiles: 'standard,strict',
-    run: rawInput => runAutoTmuxDev(rawInput),
-  },
-  {
-    id: 'pre:bash:tmux-reminder',
-    profiles: 'strict',
-    run: rawInput => runTmuxReminder(rawInput),
-  },
-{
-    id: 'pre:bash:git-push-reminder',
-    profiles: 'strict',
-    run: rawInput => runGitPushReminder(rawInput),
-  },
-  {
-    id: 'pre:bash:commit-quality',
-    profiles: 'strict',
-    run: rawInput => runCommitQuality(rawInput),
   },
   {
     id: 'pre:bash:gateguard-fact-force',
     profiles: 'standard,strict',
     run: rawInput => runGateGuard(rawInput),
   },
+  // 선택 훅 (해당 명령어일 때만 실행)
   {
-    id: 'pre:bash:auto-version-bump',
-    profiles: 'minimal,standard,strict',
-    run: rawInput => runAutoVersionBump(rawInput),
+    id: 'pre:bash:git-push-reminder',
+    profiles: 'standard,strict',
+    matcher: /git\s+push/,
+    run: rawInput => runGitPushReminder(rawInput),
+  },
+  {
+    id: 'pre:bash:commit-quality',
+    profiles: 'standard,strict',
+    matcher: /git\s+commit/,
+    run: rawInput => runCommitQuality(rawInput),
   },
 ];
 
 const POST_BASH_HOOKS = [
   {
-    id: 'post:bash:command-log-audit',
-    profiles: 'strict',
-    run: rawInput => runCommandLog(rawInput, 'audit'),
-  },
-  {
     id: 'post:bash:command-log-cost',
+    profiles: 'strict',
     run: rawInput => runCommandLog(rawInput, 'cost'),
   },
   {
     id: 'post:bash:pr-created',
     profiles: 'standard,strict',
+    matcher: /gh\s+pr\s+create/,
     run: rawInput => runPrCreated(rawInput),
   },
   {
     id: 'post:bash:build-complete',
     profiles: 'standard,strict',
+    matcher: /(npm run build|pnpm build|yarn build)/,
     run: rawInput => runBuildComplete(rawInput),
   },
 ];
@@ -105,12 +90,25 @@ function normalizeHookResult(previousRaw, output) {
   return { raw: previousRaw, stderr: '', exitCode: 0 };
 }
 
+function parseCommand(rawInput) {
+  try {
+    return JSON.parse(rawInput)?.tool_input?.command || '';
+  } catch {
+    return '';
+  }
+}
+
 function runHooks(rawInput, hooks) {
   let currentRaw = rawInput;
   let stderr = '';
+  const command = parseCommand(rawInput);
 
   for (const hook of hooks) {
     if (!isHookEnabled(hook.id, { profiles: hook.profiles })) {
+      continue;
+    }
+
+    if (hook.matcher && !hook.matcher.test(command)) {
       continue;
     }
 

@@ -38,8 +38,6 @@ const READ_HEARTBEAT_MS = 60 * 1000;
 const MAX_CHECKED_ENTRIES = 500;
 const MAX_SESSION_KEYS = 50;
 const ROUTINE_BASH_SESSION_KEY = '__bash_session__';
-const EDIT_WRITE_HOOK_ID = 'pre:edit-write:gateguard-fact-force';
-const BASH_HOOK_ID = 'pre:bash:gateguard-fact-force';
 const GENIE_DISABLE_VALUES = new Set(['0', 'false', 'off', 'disabled', 'disable']);
 
 const DESTRUCTIVE_BASH = /\b(rm\s+-rf|git\s+reset\s+--hard|git\s+checkout\s+--|git\s+clean\s+-f|drop\s+table|delete\s+from|truncate|git\s+push\s+--force(?!-with-lease)|git\s+commit\s+--amend|dd\s+if=)\b/i;
@@ -311,68 +309,41 @@ function isReadOnlyGitIntrospection(command) {
 function editGateMsg(filePath) {
   const safe = sanitizePath(filePath);
   return [
-    '[Fact-Forcing Gate]',
+    `Before editing ${safe}:`,
     '',
-    `Before editing ${safe}, present these facts:`,
-    '',
-    '1. List ALL files that import/require this file (use Grep)',
+    '1. List ALL files that import/require this file',
     '2. List the public functions/classes affected by this change',
-    '3. If this file reads/writes data files, show field names, structure, and date format (use redacted or synthetic values, not raw production data)',
-    "4. Quote the user's current instruction verbatim",
-    '',
-    'Present the facts, then retry the same operation.'
+    "3. Quote the user's current instruction verbatim",
   ].join('\n');
 }
 
 function writeGateMsg(filePath) {
   const safe = sanitizePath(filePath);
   return [
-    '[Fact-Forcing Gate]',
-    '',
-    `Before creating ${safe}, present these facts:`,
+    `Before creating ${safe}:`,
     '',
     '1. Name the file(s) and line(s) that will call this new file',
     '2. Confirm no existing file serves the same purpose (use Glob)',
-    '3. If this file reads/writes data files, show field names, structure, and date format (use redacted or synthetic values, not raw production data)',
-    "4. Quote the user's current instruction verbatim",
-    '',
-    'Present the facts, then retry the same operation.'
+    "3. Quote the user's current instruction verbatim",
   ].join('\n');
 }
 
 function destructiveBashMsg() {
   return [
-    '[Fact-Forcing Gate]',
-    '',
-    'Destructive command detected. Before running, present:',
+    'Destructive command detected. Before running:',
     '',
     '1. List all files/data this command will modify or delete',
     '2. Write a one-line rollback procedure',
     "3. Quote the user's current instruction verbatim",
-    '',
-    'Present the facts, then retry the same operation.'
   ].join('\n');
 }
 
 function routineBashMsg() {
   return [
-    '[Fact-Forcing Gate]',
-    '',
-    'Before the first Bash command this session, present these facts:',
+    'Before the first Bash command this session:',
     '',
     '1. The current user request in one sentence',
     '2. What this specific command verifies or produces',
-    '',
-    'Present the facts, then retry the same operation.'
-  ].join('\n');
-}
-
-function withRecoveryHint(message, hookIds = [EDIT_WRITE_HOOK_ID]) {
-  const disableTargets = hookIds.map(hookId => `\`${hookId}\``).join(' or ');
-  return [
-    message,
-    '',
-    `Recovery: if GateGuard is blocking setup or repair work, run this session with \`GENIE_GATEGUARD=off\` or add ${disableTargets} to \`GENIE_DISABLED_HOOKS\`.`
   ].join('\n');
 }
 
@@ -393,17 +364,9 @@ function isSubagentInvocation(data) {
 
 // --- Deny helper ---
 
-function denyResult(reason, options = {}) {
-  const includeRecoveryHint = options.includeRecoveryHint !== false;
-  const hookIds = Array.isArray(options.hookIds) && options.hookIds.length > 0 ? options.hookIds : [EDIT_WRITE_HOOK_ID];
+function denyResult(reason) {
   return {
-    stdout: JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
-        permissionDecisionReason: includeRecoveryHint ? withRecoveryHint(reason, hookIds) : reason
-      }
-    }),
+    stdout: JSON.stringify({ permissionDecision: 'deny', userMessage: reason }),
     exitCode: 0
   };
 }
@@ -490,7 +453,7 @@ function run(rawInput) {
         if (!markChecked(key)) {
           return allowWithStateWarning();
         }
-        return denyResult(destructiveBashMsg(), { includeRecoveryHint: false });
+        return denyResult(destructiveBashMsg());
       }
       return rawInput; // allow retry after facts presented
     }
@@ -499,7 +462,7 @@ function run(rawInput) {
       if (!markChecked(ROUTINE_BASH_SESSION_KEY)) {
         return allowWithStateWarning();
       }
-      return denyResult(routineBashMsg(), { hookIds: [BASH_HOOK_ID] });
+      return denyResult(routineBashMsg());
     }
 
     return rawInput; // allow

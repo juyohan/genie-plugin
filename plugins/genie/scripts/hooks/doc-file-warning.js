@@ -2,12 +2,8 @@
 /**
  * Doc file warning hook (PreToolUse - Write)
  *
- * Uses a denylist approach: only warn on known ad-hoc documentation
- * filenames (NOTES, TODO, SCRATCH, etc.) outside structured directories.
- * This avoids false positives for legitimate markdown-heavy workflows
- * (specs, ADRs, command definitions, skill files, etc.).
- *
- * Policy ported from the intent of PR #962 into the current hook architecture.
+ * Warns when any .md/.txt file is created at the project root level.
+ * Suggests an appropriate subdirectory based on the filename.
  * Exit code 0 always (warns only, never blocks).
  */
 
@@ -18,33 +14,35 @@ const path = require('path');
 const MAX_STDIN = 1024 * 1024;
 let data = '';
 
-// Known ad-hoc filenames that indicate impulse/scratch files (case-sensitive, uppercase only)
-const ADHOC_FILENAMES = /^(NOTES|TODO|SCRATCH|TEMP|DRAFT|BRAINSTORM|SPIKE|DEBUG|WIP)\.(md|txt)$/;
+// Files that belong at the root by convention
+const ROOT_EXCEPTIONS = /^(README|CHANGELOG|CHANGELOG-\S+|LICENSE|CONTRIBUTING|CODE_OF_CONDUCT|SECURITY|NOTICE|AUTHORS|CODEOWNERS)\.(md|txt)$/i;
 
-// Structured directories where even ad-hoc names are intentional
-const STRUCTURED_DIRS = /(^|\/)(docs|\.claude|\.github|commands|skills|benchmarks|templates|\.history|memory)\//;
-
-function isSuspiciousDocPath(filePath) {
-  const normalized = filePath.replace(/\\/g, '/');
-  const basename = path.basename(normalized);
-
-  // Only inspect .md and .txt files (case-sensitive, consistent with ADHOC_FILENAMES)
-  if (!/\.(md|txt)$/.test(basename)) return false;
-
-  // Only flag known ad-hoc filenames
-  if (!ADHOC_FILENAMES.test(basename)) return false;
-
-  // Allow ad-hoc names inside structured directories (intentional usage)
-  if (STRUCTURED_DIRS.test(normalized)) return false;
-
-  return true;
+function suggestDirectory(basename) {
+  const lower = basename.toLowerCase();
+  if (/plan|spec|design|arch|rfc|adr|brief/.test(lower)) return 'docs/plans/';
+  if (/test|bench/.test(lower)) return 'benchmarks/';
+  if (/skill|command/.test(lower)) return 'skills/';
+  if (/memory|remember/.test(lower)) return '.claude/memory/';
+  return 'docs/';
 }
 
-/**
- * Exportable run() for in-process execution via run-with-flags.js.
- * Avoids the ~50-100ms spawnSync overhead when available.
- */
-function run(inputOrRaw, _options = {}) {
+function isRootLevel(filePath) {
+  const normalized = path.resolve(filePath).replace(/\\/g, '/');
+  const cwd = process.cwd().replace(/\\/g, '/');
+  return path.dirname(normalized).replace(/\\/g, '/') === cwd;
+}
+
+function check(filePath) {
+  const basename = path.basename(filePath);
+
+  if (!/\.(md|txt)$/i.test(basename)) return null;
+  if (!isRootLevel(filePath)) return null;
+  if (ROOT_EXCEPTIONS.test(basename)) return null;
+
+  return suggestDirectory(basename);
+}
+
+function run(inputOrRaw) {
   let input;
   try {
     input = typeof inputOrRaw === 'string'
@@ -53,15 +51,17 @@ function run(inputOrRaw, _options = {}) {
   } catch {
     return { exitCode: 0 };
   }
-  const filePath = String(input?.tool_input?.file_path || '');
 
-  if (filePath && isSuspiciousDocPath(filePath)) {
+  const filePath = String(input?.tool_input?.file_path || '');
+  const suggestedDir = filePath ? check(filePath) : null;
+
+  if (suggestedDir) {
+    const basename = path.basename(filePath);
     return {
       exitCode: 0,
       stderr:
-        '[Hook] WARNING: Ad-hoc documentation filename detected\n' +
-        `[Hook] File: ${filePath}\n` +
-        '[Hook] Consider using a structured path (e.g. docs/, .claude/, skills/, .github/, benchmarks/, templates/)',
+        `[Hook] Root-level doc detected: ${basename}\n` +
+        `[Hook] Suggested path: ${suggestedDir}${basename}`,
     };
   }
 

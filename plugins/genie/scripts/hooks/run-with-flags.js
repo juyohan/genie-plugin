@@ -18,21 +18,15 @@ const MAX_STDIN = 1024 * 1024;
 function readStdinRaw() {
   return new Promise(resolve => {
     let raw = '';
-    let truncated = false;
     process.stdin.setEncoding('utf8');
     process.stdin.on('data', chunk => {
       if (raw.length < MAX_STDIN) {
         const remaining = MAX_STDIN - raw.length;
         raw += chunk.substring(0, remaining);
-        if (chunk.length > remaining) {
-          truncated = true;
-        }
-      } else {
-        truncated = true;
       }
     });
-    process.stdin.on('end', () => resolve({ raw, truncated }));
-    process.stdin.on('error', () => resolve({ raw, truncated }));
+    process.stdin.on('end', () => resolve(raw));
+    process.stdin.on('error', () => resolve(raw));
   });
 }
 
@@ -87,7 +81,7 @@ function getPluginRoot() {
 
 async function main() {
   const [, , hookId, relScriptPath, profilesCsv] = process.argv;
-  const { raw, truncated } = await readStdinRaw();
+  const raw = await readStdinRaw();
 
   if (!hookId || !relScriptPath) {
     process.stdout.write(raw);
@@ -137,13 +131,7 @@ async function main() {
 
   if (hookModule && typeof hookModule.run === 'function') {
     try {
-      const output = hookModule.run(raw, {
-        hookId,
-        pluginRoot,
-        scriptPath,
-        truncated,
-        maxStdin: MAX_STDIN
-      });
+      const output = hookModule.run(raw);
       process.exit(emitHookResult(raw, output));
     } catch (runErr) {
       process.stderr.write(`[Hook] run() error for ${hookId}: ${runErr.message}\n`);
@@ -160,7 +148,6 @@ async function main() {
       ...process.env,
       CLAUDE_PLUGIN_ROOT: pluginRoot,
       GENIE_HOOK_ID: hookId,
-      GENIE_HOOK_INPUT_TRUNCATED: truncated ? '1' : '0',
       GENIE_HOOK_INPUT_MAX_BYTES: String(MAX_STDIN)
     },
     cwd: process.cwd(),

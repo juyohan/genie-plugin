@@ -8,6 +8,7 @@ const MAX_STDIN = 1024 * 1024;
 const AGENT_MAP = [
   ['/docs/brainstorms/', 'genie:brainstorm'],
   ['/docs/plans/',       'genie:plan'],
+  ['/docs/tests/',       'genie:test'],
   ['/docs/reviews/',     'genie:review'],
   ['/docs/solutions/',   'genie:learn'],
   ['/docs/compounds/',   'genie:learn'],
@@ -26,6 +27,8 @@ function getClaudeDir() {
 }
 
 function readSessionTokens(sessionId) {
+  if (!sessionId) return { input: 0, output: 0 };
+
   const costsPath = path.join(getClaudeDir(), 'metrics', 'costs.jsonl');
   if (!fs.existsSync(costsPath)) return { input: 0, output: 0 };
 
@@ -34,7 +37,7 @@ function readSessionTokens(sessionId) {
   for (const line of lines) {
     try {
       const entry = JSON.parse(line);
-      if (!sessionId || entry.session_id === sessionId) {
+      if (entry.session_id === sessionId) {
         input  += entry.input_tokens  || 0;
         output += entry.output_tokens || 0;
       }
@@ -72,7 +75,14 @@ function run(rawInput) {
     const sessionId = process.env.CLAUDE_SESSION_ID || '';
     const tokens    = readSessionTokens(sessionId);
 
-    fs.writeFileSync(filePath, buildFrontmatter(agent, tokens) + content, 'utf8');
+    const tmpPath = `${filePath}.tmp.${process.pid}`;
+    try {
+      fs.writeFileSync(tmpPath, buildFrontmatter(agent, tokens) + content, 'utf8');
+      fs.renameSync(tmpPath, filePath);
+    } catch (writeErr) {
+      try { fs.unlinkSync(tmpPath); } catch {}
+      throw writeErr;
+    }
   } catch {}
 
   return rawInput;

@@ -22,16 +22,6 @@
         ]
       },
       {
-        "id": "genie:pre:edit-write:suggest-compact",
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:edit-write:suggest-compact scripts/hooks/suggest-compact.js standard,strict"
-          }
-        ]
-      },
-      {
         "id": "genie:pre:config-protection",
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
@@ -52,16 +42,29 @@
             "timeout": 5
           }
         ]
-      }
-    ],
-    "PreCompact": [
+      },
       {
-        "id": "genie:pre:compact",
+        "id": "genie:pre:observe",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:compact scripts/hooks/pre-compact.js standard,strict"
+            "command": "GENIE_OBSERVE_PHASE=pre node {{PLUGIN_ROOT}}/scripts/hooks/observe.js",
+            "async": true,
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "id": "genie:prompt:brainstorm-suggest",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/brainstorm-suggest.js",
+            "timeout": 5
           }
         ]
       }
@@ -125,6 +128,29 @@
         ]
       },
       {
+        "id": "genie:post:context-monitor",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:context-monitor scripts/hooks/context-monitor.js standard,strict",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "id": "genie:post:observe",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "GENIE_OBSERVE_PHASE=post node {{PLUGIN_ROOT}}/scripts/hooks/observe.js",
+            "async": true,
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "id": "genie:post:doc-frontmatter",
         "matcher": "Write",
         "hooks": [
@@ -137,16 +163,42 @@
         ]
       }
     ],
-    "SessionEnd": [
+    "PostToolUseFailure": [
       {
-        "id": "genie:session:end:marker",
+        "id": "genie:tool-failure",
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js session:end:marker scripts/hooks/session-end-marker.js minimal,standard,strict 30000",
-            "timeout": 10,
-            "async": true
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:tool-failure scripts/hooks/tool-failure-logger.js standard,strict",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "id": "genie:pre:compact",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-compact.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "id": "genie:subagent:stop",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/subagent-stop.js",
+            "async": true,
+            "timeout": 10
           }
         ]
       }
@@ -170,6 +222,17 @@
           {
             "type": "command",
             "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:check-console-log scripts/hooks/check-console-log.js standard,strict 30000"
+          }
+        ]
+      },
+      {
+        "id": "genie:stop:evaluate-session",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:evaluate-session scripts/hooks/evaluate-session.js standard,strict 30000",
+            "timeout": 30
           }
         ]
       },
@@ -204,6 +267,20 @@
           {
             "type": "command",
             "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:desktop-notify scripts/hooks/desktop-notify.js standard,strict 30000",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "id": "genie:session:end",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js session:end scripts/hooks/session-end-marker.js minimal,standard,strict 10000",
             "async": true,
             "timeout": 10
           }

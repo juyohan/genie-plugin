@@ -242,6 +242,7 @@ Fix loop:
 ### Step 4: 결과물 발행 — **모드에 따라 docs/ 또는 /tmp/에 저장한다**
 
 **Interactive:** `date +%Y/%m/%d`로 날짜 확인 후 `mkdir -p docs/reviews/YYYY/MM` 실행. 최종 보고서를 `docs/reviews/YYYY/MM/DD-<제목>.md`로 저장.
+`<제목>`은 리뷰 대상 작업의 brainstorm/plan 문서 제목과 동일하게 사용하십시오.
 
 **Autofix / Headless:** `/tmp/genie/review/<run-id>/`에 `metadata.json` 포함 저장.
 
@@ -252,6 +253,22 @@ Fix loop:
 > **워크플로우 루프**: `/genie:plan` → `/genie:test` → `/genie:work` → `/genie:review` → _(P0/P1 발견 시 plan 자동 갱신 후 루프 재시작)_
 
 `fixes_applied_count > 0` → 커밋·푸시·PR은 `/genie:commit`으로.
+
+**리뷰 통과 시 (P0/P1 없음):** `/genie:learn --handoff`를 자동으로 실행합니다. 이 세션의 전체 대화(brainstorm/plan/work 포함)에서 행동 패턴을 추출하여 `~/.claude/skills/learned/`에 저장합니다. 사용자에게 묻지 않으며, 학습할 패턴이 없으면 조용히 종료합니다.
+
+**learn 완료 후** 커밋·푸시·PR은 자동으로 실행하지 않습니다. 사용자에게 아래 내용을 안내한 뒤 대기하십시오:
+
+```
+리뷰가 완료되었습니다.
+커밋할 준비가 되면 /genie:commit 을 실행하세요.
+
+전달 컨텍스트:
+- 계획 요약: <요약>
+- 주요 결정: <결정 사항>
+- 테스트 노트: <테스트 결과>
+- 운영 검증 계획: <모니터링 항목>
+- 수락된 잔여 사항: <있으면 기재>
+```
 
 ## 품질 게이트
 

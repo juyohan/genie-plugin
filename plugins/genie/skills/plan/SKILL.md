@@ -85,6 +85,7 @@ allowed-tools:
 비선형 의존성을 가진 4개 이상 단위, 3개 이상 상호작용 표면, 3개 이상 동작 모드, 3개 이상 상호작용 결정이 있으면 Mermaid 또는 마크다운 테이블로 구조를 시각화하십시오.
 
 **저장 경로:** 저장 전 `date +%Y/%m/%d`로 오늘 날짜를 확인하고 `mkdir -p docs/plans/YYYY/MM`를 실행하십시오. 파일: `docs/plans/YYYY/MM/DD-<제목>.md`
+`<제목>`은 참조한 brainstorm 문서의 제목(`DD-<제목>.md`에서 `<제목>` 부분)과 반드시 동일하게 사용하십시오. brainstorm 없이 신규 작성 시에는 `ls docs/plans/YYYY/MM/`으로 중복을 확인 후 결정하십시오.
 R/A/F/AE-ID를 Requirements, Units, 테스트 시나리오에 추적하십시오. 결정 사항에는 근거를 포함하십시오.
 
 ## 7. 심화 및 핸드오프

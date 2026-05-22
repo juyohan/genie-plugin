@@ -9,6 +9,12 @@
  * For JS/TS files with Biome, formatting is handled upstream;
  * this hook still handles .json/.md files for Biome, and all
  * Prettier / Go / Python checks.
+ *
+ * Environment variables:
+ *   GENIE_QUALITY_GATE_FIX    — "true" (default): auto-fix files after edit
+ *                               "false": check only, no modifications
+ *   GENIE_QUALITY_GATE_STRICT — "true": log warnings to stderr on check failure
+ *                               "false" (default): silent on failure
  */
 
 'use strict';
@@ -62,7 +68,7 @@ function maybeRunQualityGate(filePath) {
   filePath = path.resolve(filePath);
 
   const ext = path.extname(filePath).toLowerCase();
-  const fix = String(process.env.GENIE_QUALITY_GATE_FIX || '').toLowerCase() === 'true';
+  const fix = String(process.env.GENIE_QUALITY_GATE_FIX || 'true').toLowerCase() === 'true';
   const strict = String(process.env.GENIE_QUALITY_GATE_STRICT || '').toLowerCase() === 'true';
 
   if (['.ts', '.tsx', '.js', '.jsx', '.json', '.md'].includes(ext)) {

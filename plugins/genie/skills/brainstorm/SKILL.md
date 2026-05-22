@@ -106,6 +106,7 @@ allowed-tools:
 **`docs/brainstorms/YYYY/MM/DD-<제목>.md` 에 저장한다.**
 
 - 저장 전 `date +%Y/%m/%d`로 오늘 날짜를 확인하고 `mkdir -p docs/brainstorms/YYYY/MM`를 실행하십시오.
+- **제목 중복 방지**: 저장 전 `ls docs/brainstorms/YYYY/MM/` 로 해당 월 파일 목록을 확인하십시오. 동일하거나 유사한 제목이 있으면 현재 작업을 더 구체적으로 표현하는 이름으로 구분하십시오 (예: `auth-flow` → `auth-flow-token-refresh`). 이 제목은 plan/test/work/review 등 이후 스킬에서 그대로 사용되므로 처음부터 명확하게 결정하십시오.
 - 포함할 섹션(모든 계층): Summary, Problem Frame, Requirements(R-IDs), Success Criteria, Scope Boundaries, Key Decisions.
 - Standard/Deep 추가: Actors(A-IDs), Key Flows(F-IDs), Acceptance Examples(AE-IDs).
 - Deep-product 추가: Assumptions 섹션(항상 포함; Headless이면 Inferred 항목, 대화형이면 Key Decisions 전제 가정).

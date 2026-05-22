@@ -1,67 +1,88 @@
 #!/usr/bin/env node
-'use strict';
-
 /**
- * Session end marker hook - performs lightweight observer cleanup and
- * outputs stdin to stdout unchanged. Exports run() for in-process execution.
+ * SessionEnd Hook: Final Session Marker
+ *
+ * Triggered when the Claude process actually exits (unlike Stop, which fires
+ * after each response). Writes a final session record with stats collected
+ * during the session, and cleans up ephemeral /tmp/genie/ state files.
+ *
+ * Output: .claude/genie/session-end.jsonl
  */
 
-const {
-  resolveProjectContext,
-  removeSessionLease,
-  listSessionLeases,
-  stopObserverForContext,
-  resolveSessionId
-} = require('../lib/observer-sessions');
+'use strict';
 
-function log(message) {
-  process.stderr.write(`[SessionEnd] ${message}\n`);
-}
+const fs = require('fs');
+const path = require('path');
 
-function run(rawInput) {
-  const output = rawInput || '';
-  const sessionId = resolveSessionId();
+const CONTEXT_MONITOR_STATE = path.join('/tmp', 'genie', 'context-monitor-state.json');
+const FAILURE_STATE = path.join('/tmp', 'genie', 'failure-state.json');
 
-  if (!sessionId) {
-    log('No CLAUDE_SESSION_ID available; skipping observer cleanup');
-    return output;
-  }
-
+function readJson(filePath) {
   try {
-    const observerContext = resolveProjectContext();
-    removeSessionLease(observerContext, sessionId);
-    const remainingLeases = listSessionLeases(observerContext);
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
 
-    if (remainingLeases.length === 0) {
-      if (stopObserverForContext(observerContext)) {
-        log(`Stopped observer for project ${observerContext.projectId} after final session lease ended`);
-      } else {
-        log(`No running observer to stop for project ${observerContext.projectId}`);
-      }
-    } else {
-      log(`Retained observer for project ${observerContext.projectId}; ${remainingLeases.length} session lease(s) remain`);
-    }
+function topDirectory(files) {
+  if (!files || files.length === 0) return null;
+  const counts = {};
+  for (const f of files) {
+    const d = path.dirname(f);
+    counts[d] = (counts[d] || 0) + 1;
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
+async function main() {
+  let payload = {};
+  try {
+    let raw = '';
+    process.stdin.setEncoding('utf8');
+    await new Promise(resolve => {
+      process.stdin.on('data', c => { raw += c; });
+      process.stdin.on('end', resolve);
+    });
+    payload = JSON.parse(raw);
+  } catch { /* use empty payload */ }
+
+  const monitorState = readJson(CONTEXT_MONITOR_STATE);
+  const failureState = readJson(FAILURE_STATE);
+
+  const totalCalls = monitorState?.total_calls || 0;
+  const editedFiles = monitorState?.edited_files || [];
+  const failureCounts = failureState?.counts || {};
+  const totalFailures = Object.values(failureCounts).reduce((s, n) => s + n, 0);
+
+  const record = {
+    ts: new Date().toISOString(),
+    total_tool_calls: totalCalls,
+    edited_files_count: editedFiles.length,
+    ...(editedFiles.length > 0 && { top_dir: topDirectory(editedFiles) }),
+    ...(totalFailures > 0 && { total_failures: totalFailures, failure_counts: failureCounts }),
+    ...(payload.transcript_path && { transcript: payload.transcript_path }),
+  };
+
+  const logDir = path.join(process.cwd(), '.claude', 'genie');
+  const logFile = path.join(logDir, 'session-end.jsonl');
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+    fs.appendFileSync(logFile, JSON.stringify(record) + '\n', 'utf8');
+    process.stderr.write(`[SessionEnd] Recorded: ${totalCalls} calls, ${editedFiles.length} files\n`);
   } catch (err) {
-    log(`Observer cleanup skipped: ${err.message}`);
+    process.stderr.write(`[SessionEnd] Warning: ${err.message}\n`);
   }
 
-  return output;
+  // Clean up ephemeral session state from /tmp
+  for (const f of [CONTEXT_MONITOR_STATE, FAILURE_STATE]) {
+    try { fs.unlinkSync(f); } catch { /* already gone */ }
+  }
+
+  process.exit(0);
 }
 
-// Legacy CLI execution (when run directly)
-if (require.main === module) {
-  const MAX_STDIN = 1024 * 1024;
-  let raw = '';
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', chunk => {
-    if (raw.length < MAX_STDIN) {
-      const remaining = MAX_STDIN - raw.length;
-      raw += chunk.substring(0, remaining);
-    }
-  });
-  process.stdin.on('end', () => {
-    process.stdout.write(run(raw));
-  });
-}
-
-module.exports = { run };
+main().catch(err => {
+  process.stderr.write(`[SessionEnd] Error: ${err.message}\n`);
+  process.exit(0);
+});
