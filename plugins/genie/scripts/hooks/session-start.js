@@ -7,6 +7,11 @@
  * Runs when a new Claude session starts. Loads the most recent session
  * summary into Claude's context via stdout, and reports available
  * sessions and learned skills.
+ *
+ * Environment variables:
+ *   GENIE_SESSION_START_CONTEXT    — "off": disable context injection entirely
+ *   GENIE_SESSION_START_MAX_CHARS  — max chars to inject (default: 8000)
+ *   GENIE_SESSION_RETENTION_DAYS   — session file retention in days (default: 7)
  */
 
 const {
@@ -20,7 +25,8 @@ const {
   stripAnsi,
   log
 } = require('../lib/utils');
-const { resolveProjectContext, writeSessionLease, resolveSessionId, getHomunculusDir } = require('../lib/observer-sessions');
+const { resolveProjectContext, getHomunculusDir } = require('../lib/observer-sessions');
+const { readTasks, getInProgressTasks, getNextStage, findTaskDocFiles } = require('../lib/task-tracker');
 const { getPackageManager, getSelectionPrompt } = require('../lib/package-manager');
 const { listAliases } = require('../lib/session-aliases');
 const { detectProjectType } = require('../lib/project-detect');
@@ -32,7 +38,7 @@ const MAX_INJECTED_INSTINCTS = 6;
 const MAX_INJECTED_LEARNED_SKILLS = 6;
 const MAX_LEARNED_SKILL_SUMMARY_CHARS = 220;
 const DEFAULT_SESSION_START_CONTEXT_MAX_CHARS = 8000;
-const DEFAULT_SESSION_RETENTION_DAYS = 30;
+const DEFAULT_SESSION_RETENTION_DAYS = 7;
 
 /**
  * Resolve a filesystem path to its canonical (real) form.
@@ -52,11 +58,11 @@ function normalizePath(p) {
   }
 }
 
-function dedupeRecentSessions(searchDirs) {
+function dedupeRecentSessions(searchDirs, maxAgeDays = DEFAULT_SESSION_RETENTION_DAYS) {
   const recentSessionsByName = new Map();
 
   for (const [dirIndex, dir] of searchDirs.entries()) {
-    const matches = findFiles(dir, '*-session.tmp', { maxAge: 7 });
+    const matches = findFiles(dir, '*-session.tmp', { maxAge: maxAgeDays });
 
     for (const match of matches) {
       const basename = path.basename(match.path);
@@ -112,6 +118,10 @@ function limitSessionStartContext(additionalContext, maxChars = getSessionStartM
   const prefixLength = Math.max(0, maxChars - marker.length);
   log(`[SessionStart] Truncated additional context from ${context.length} to ${maxChars} chars`);
 
+  if (prefixLength === 0) {
+    log(`[SessionStart] maxChars(${maxChars}) is smaller than truncation marker; returning raw prefix`);
+    return context.slice(0, maxChars);
+  }
   return `${context.slice(0, prefixLength).trimEnd()}${marker}`.slice(0, maxChars);
 }
 
@@ -454,7 +464,10 @@ function summarizeLearnedSkillFile(filePath, learnedRoot) {
 
 function collectLearnedSkillFiles(learnedDir) {
   const flatMarkdownFiles = findFiles(learnedDir, '*.md');
-  const directorySkillFiles = findFiles(learnedDir, 'SKILL.md', { recursive: true });
+  const directorySkillFiles = [
+    ...findFiles(learnedDir, 'SKILL.md', { recursive: true }),
+    ...findFiles(learnedDir, 'skill.md', { recursive: true }),
+  ];
   const byPath = new Map();
 
   for (const match of [...flatMarkdownFiles, ...directorySkillFiles]) {
@@ -489,6 +502,61 @@ function summarizeLearnedSkills(learnedDir, learnedSkillFiles = collectLearnedSk
   ].join('\n');
 }
 
+function buildTaskResumePrompt(cwd) {
+  let tasks;
+  try {
+    tasks = readTasks(cwd);
+  } catch {
+    return '';
+  }
+
+  const inProgress = getInProgressTasks(tasks);
+  if (inProgress.length === 0) return '';
+
+  // Show the most recently updated in-progress task
+  const task = inProgress.sort((a, b) =>
+    new Date(b.updated_at || 0) - new Date(a.updated_at || 0)
+  )[0];
+
+  const nextStage = getNextStage(task.current_stage);
+  const docFiles = findTaskDocFiles(cwd, task.title);
+  const updatedAt = task.updated_at
+    ? new Date(task.updated_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })
+    : '';
+
+  const relativeDocFiles = docFiles.map(f => path.relative(cwd, f));
+
+  const lines = [
+    '[GENIE TASK TRACKER — 진행 중인 작업 감지]',
+    `작업 제목: ${task.title}`,
+    `현재 단계: ${task.current_stage}`,
+    updatedAt ? `마지막 업데이트: ${updatedAt}` : '',
+    '',
+    '세션이 시작되면 사용자에게 다음 3가지 선택지를 **즉시** 제시하십시오:',
+    '',
+    `1. **이어가기** — 이전 작업에서 계속 진행합니다.`,
+    nextStage ? `   → 다음 권장 스킬: \`/${nextStage}\`` : '   → (마지막 단계 완료됨)',
+    '',
+    '2. **파일 유지 + 새로 시작** — 기존 docs 파일은 유지하되, 새 작업을 시작합니다.',
+    '',
+    '3. **파일 삭제 + 새로 시작** — 아래 관련 파일들을 삭제하고 완전히 새로 시작합니다.',
+    ...(relativeDocFiles.length > 0
+      ? relativeDocFiles.map(f => `   - ${f}`)
+      : ['   (관련 파일 없음)']),
+    '',
+    '사용자가 **1번(이어가기)**을 선택하면:',
+    nextStage
+      ? `  - "다음 단계는 \`/${nextStage}\`입니다. 바로 시작할까요?" 라고 제안하십시오.`
+      : '  - 작업이 완료되었음을 안내하십시오.',
+    '사용자가 **3번(파일 삭제)**을 선택하면:',
+    '  - 위 파일 목록을 Bash 도구로 삭제한 후 작업을 새로 시작하십시오.',
+    '',
+    '사용자의 응답을 받기 전까지 다른 작업을 진행하지 마십시오.',
+  ].filter(l => l !== undefined);
+
+  return lines.join('\n');
+}
+
 async function main(source = 'startup') {
   const sessionsDir = getSessionsDir();
   const sessionSearchDirs = getSessionSearchDirs();
@@ -509,17 +577,6 @@ async function main(source = 'startup') {
     log(`[SessionStart] Pruned ${prunedSessions} expired session(s) older than ${retentionDays} day(s)`);
   }
 
-  const observerSessionId = resolveSessionId();
-  if (observerSessionId) {
-    writeSessionLease(observerContext, observerSessionId, {
-      hook: 'SessionStart',
-      projectRoot: observerContext.projectRoot
-    });
-    log(`[SessionStart] Registered observer lease for ${observerSessionId}`);
-  } else {
-    log('[SessionStart] No CLAUDE_SESSION_ID available; skipping observer lease registration');
-  }
-
   if (explicitContextDisabled) {
     log('[SessionStart] Additional context injection disabled by GENIE_SESSION_START_CONTEXT');
   } else if (maxContextChars === 0) {
@@ -532,8 +589,8 @@ async function main(source = 'startup') {
       additionalContextParts.push(instinctSummary);
     }
 
-    // Check for recent session files (last 7 days)
-    const recentSessions = dedupeRecentSessions(sessionSearchDirs);
+    // Check for recent session files (within retention window)
+    const recentSessions = dedupeRecentSessions(sessionSearchDirs, retentionDays);
 
     if (recentSessions.length > 0) {
       log(`[SessionStart] Found ${recentSessions.length} recent session(s)`);
@@ -553,8 +610,7 @@ async function main(source = 'startup') {
         const content = stripAnsi(result.content);
         if (content && !content.includes('[Session context goes here]')) {
           if (source === 'compact') {
-            // Compact resume: inject only the last active task to avoid the model
-            // re-executing stale ARGUMENTS payloads injected by the compaction system.
+            // Compact resume: inject last active task + genie compact-state if available
             const lastTaskMatch = content.match(/###\s+Last Active Task\s*\n([\s\S]+?)(?:\n###|\n##|$)/);
             const lastTask = lastTaskMatch ? lastTaskMatch[1].trim() : '';
             if (lastTask) {
@@ -571,6 +627,36 @@ async function main(source = 'startup') {
                 '--- END LAST ACTIVE TASK ---',
               ].join('\n');
               additionalContextParts.push(compactGuard);
+            }
+
+            // Inject genie compact-state (saved by pre-compact.js)
+            const compactStateFile = path.join(process.cwd(), '.claude', 'genie', 'compact-state.json');
+            try {
+              if (fs.existsSync(compactStateFile)) {
+                const state = JSON.parse(fs.readFileSync(compactStateFile, 'utf8'));
+                const lines = ['[GENIE COMPACT STATE — compaction 직전 저장된 상태]'];
+
+                if (state.in_progress_task) {
+                  lines.push(`진행 중인 작업: ${state.in_progress_task.title} (단계: ${state.in_progress_task.current_stage})`);
+                }
+                if (state.team_discussion) {
+                  const t = state.team_discussion;
+                  lines.push(`팀 토론 진행 중: run-id ${t.run_id}, Round ${t.current_round}`);
+                  lines.push(`핸드오프 파일 위치: ${t.handoff_dir}`);
+                  if (t.handoff_files?.length > 0) {
+                    lines.push('작성된 핸드오프 파일:');
+                    t.handoff_files.forEach(f => lines.push(`  - ${f}`));
+                  }
+                  lines.push('팀 토론을 이어가려면 위 파일들을 읽고 다음 라운드를 진행하십시오.');
+                }
+
+                if (lines.length > 1) {
+                  additionalContextParts.push(lines.join('\n'));
+                  log('[SessionStart] Injected genie compact-state');
+                }
+              }
+            } catch (err) {
+              log(`[SessionStart] Warning: failed to read compact-state: ${err.message}`);
             }
           } else {
             // Normal startup/resume: inject full session context with stale-replay guard.
@@ -612,6 +698,13 @@ async function main(source = 'startup') {
     const learnedSkillSummary = summarizeLearnedSkills(learnedDir, learnedSkills);
     if (learnedSkillSummary) {
       additionalContextParts.push(learnedSkillSummary);
+    }
+
+    // Check for in-progress genie tasks and inject 3-choice resume prompt
+    const taskResumePrompt = buildTaskResumePrompt(process.cwd());
+    if (taskResumePrompt) {
+      log('[SessionStart] In-progress task detected — injecting resume prompt');
+      additionalContextParts.push(taskResumePrompt);
     }
   }
 
