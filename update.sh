@@ -90,6 +90,16 @@ done
 
 echo ""
 
+# ── hooks ─────────────────────────────────────────────────────────────────────
+INSTALL_HOOKS="${PLUGIN_DIR}/plugins/genie/scripts/install-hooks.js"
+echo "Syncing hooks → ${CLAUDE_DIR}/settings.json"
+if [ -f "${INSTALL_HOOKS}" ]; then
+  node "${INSTALL_HOOKS}"
+else
+  echo -e "  ${RED}skip${RESET}  install-hooks.js not found at ${INSTALL_HOOKS}"
+fi
+echo ""
+
 # ── summary ───────────────────────────────────────────────────────────────────
 echo -e "${GREEN}Done.${RESET}"
 echo "  Agents:  ${agents_new} new, ${agents_updated} updated"

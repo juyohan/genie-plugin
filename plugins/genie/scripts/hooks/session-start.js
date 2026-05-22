@@ -32,6 +32,7 @@ const { listAliases } = require('../lib/session-aliases');
 const { detectProjectType } = require('../lib/project-detect');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const INSTINCT_CONFIDENCE_THRESHOLD = 0.7;
 const MAX_INJECTED_INSTINCTS = 6;
@@ -557,7 +558,49 @@ function buildTaskResumePrompt(cwd) {
   return lines.join('\n');
 }
 
+function autoSyncHooksIfNeeded() {
+  try {
+    const hooksJsonPath = path.join(__dirname, '../../hooks/hooks.json');
+    const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
+
+    if (!fs.existsSync(hooksJsonPath)) return;
+
+    const hooksJson = JSON.parse(fs.readFileSync(hooksJsonPath, 'utf8'));
+    const allIds = Object.values(hooksJson.hooks || {})
+      .flat()
+      .map(entry => entry.id)
+      .filter(Boolean);
+
+    if (allIds.length === 0) return;
+
+    const settings = fs.existsSync(settingsPath)
+      ? JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
+      : {};
+    const registeredIds = new Set(
+      Object.values(settings.hooks || {}).flat().map(h => h.id).filter(Boolean)
+    );
+
+    const missing = allIds.filter(id => !registeredIds.has(id));
+    if (missing.length === 0) return;
+
+    log(`[SessionStart] 누락된 훅 감지 (${missing.length}개) — install-hooks.js 자동 실행`);
+    const installScript = path.join(__dirname, '../install-hooks.js');
+    if (!fs.existsSync(installScript)) {
+      log(`[SessionStart] install-hooks.js not found: ${installScript}`);
+      return;
+    }
+
+    const { execFileSync } = require('child_process');
+    execFileSync(process.execPath, [installScript], { stdio: 'pipe' });
+    log(`[SessionStart] 훅 자동 동기화 완료 — 다음 세션부터 모든 훅이 활성화됩니다`);
+  } catch (err) {
+    log(`[SessionStart] autoSyncHooks 실패: ${err.message}`);
+  }
+}
+
 async function main(source = 'startup') {
+  autoSyncHooksIfNeeded();
+
   const sessionsDir = getSessionsDir();
   const sessionSearchDirs = getSessionSearchDirs();
   const learnedDir = getLearnedSkillsDir();
