@@ -4,6 +4,23 @@
 const MAX_STDIN = 1024 * 1024;
 let raw = '';
 
+function isInsideMux() {
+  return Boolean(process.env.TMUX || process.env.CMUX_SHELL_INTEGRATION);
+}
+
+function getMuxHint() {
+  if (process.env.CMUX_BUNDLED_CLI_PATH) {
+    return [
+      '[Hook] Consider running in cmux for session persistence',
+      '[Hook] cmux new-workspace --name dev  |  or open a new cmux workspace',
+    ].join('\n');
+  }
+  return [
+    '[Hook] Consider running in tmux for session persistence',
+    '[Hook] tmux new -s dev  |  tmux attach -t dev',
+  ].join('\n');
+}
+
 function run(rawInput) {
   try {
     const input = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;
@@ -11,15 +28,12 @@ function run(rawInput) {
 
     if (
       process.platform !== 'win32' &&
-      !process.env.TMUX &&
+      !isInsideMux() &&
       /(npm (install|test)|pnpm (install|test)|yarn (install|test)?|bun (install|test)|cargo build|make\b|docker\b|pytest|vitest|playwright)/.test(cmd)
     ) {
       return {
         stdout: typeof rawInput === 'string' ? rawInput : JSON.stringify(rawInput),
-        stderr: [
-          '[Hook] Consider running in tmux for session persistence',
-          '[Hook] tmux new -s dev  |  tmux attach -t dev',
-        ].join('\n'),
+        stderr: getMuxHint(),
         exitCode: 0,
       };
     }

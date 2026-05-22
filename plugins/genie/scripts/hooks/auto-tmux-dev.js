@@ -31,60 +31,80 @@ const { spawnSync } = require('child_process');
 const MAX_STDIN = 1024 * 1024; // 1MB limit
 let data = '';
 
+function detectMux() {
+  if (process.env.CMUX_SHELL_INTEGRATION) {
+    const bin = process.env.CMUX_BUNDLED_CLI_PATH || 'cmux';
+    return { type: 'cmux', bin };
+  }
+  if (process.env.TMUX) {
+    return { type: 'tmux', bin: 'tmux' };
+  }
+  const tmuxCheck = spawnSync('which', ['tmux'], { encoding: 'utf8' });
+  if (tmuxCheck.status === 0) return { type: 'tmux', bin: 'tmux' };
+  const cmuxBin = process.env.CMUX_BUNDLED_CLI_PATH;
+  if (cmuxBin) return { type: 'cmux', bin: cmuxBin };
+  return null;
+}
+
+function buildCmuxCommand(bin, sessionName, cmd, cwd) {
+  const escapedCmd = cmd.replace(/'/g, "'\\''");
+  const escapedCwd = cwd.replace(/'/g, "'\\''");
+  return (
+    `'${bin.replace(/'/g, "'\\''")}' new-workspace` +
+    ` --name '${sessionName}'` +
+    ` --cwd '${escapedCwd}'` +
+    ` --command '${escapedCmd}'` +
+    ` --no-focus` +
+    ` && echo "[Hook] Dev server started in cmux workspace '${sessionName}'."`
+  );
+}
+
+function buildTmuxCommand(sessionName, cmd) {
+  const escapedCmd = cmd.replace(/'/g, "'\\''");
+  return (
+    `SESSION="${sessionName}"; ` +
+    `tmux kill-session -t "$SESSION" 2>/dev/null || true; ` +
+    `tmux new-session -d -s "$SESSION" '${escapedCmd}' && ` +
+    `echo "[Hook] Dev server started in tmux session '${sessionName}'. View logs: tmux capture-pane -t ${sessionName} -p -S -100"`
+  );
+}
+
 function run(rawInput) {
   try {
     const input = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;
     const cmd = input.tool_input?.command || '';
 
-    // Detect dev server commands: npm run dev, pnpm dev, yarn dev, bun run dev
-    // Use word boundary (\b) to avoid matching partial commands
     const devServerRegex = /(npm run dev\b|pnpm( run)? dev\b|yarn dev\b|bun run dev\b)/;
-
-    if (devServerRegex.test(cmd)) {
-      // Get session name from current directory basename, sanitize for shell safety
-      // e.g., /home/user/Portfolio → "Portfolio", /home/user/my-app-v2 → "my-app-v2"
-      const rawName = path.basename(process.cwd());
-      // Replace non-alphanumeric characters (except - and _) with underscore to prevent shell injection
-      const sessionName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'dev';
-
-      if (process.platform === 'win32') {
-        // Windows: open in a new cmd window (non-blocking)
-        // Escape double quotes in cmd for cmd /k syntax
-        const escapedCmd = cmd.replace(/"/g, '""');
-        return JSON.stringify({
-          ...input,
-          tool_input: {
-            ...input.tool_input,
-            command: `start "DevServer-${sessionName}" cmd /k "${escapedCmd}"`,
-          },
-        });
-      } else {
-        // Unix (macOS/Linux): Check tmux is available before transforming
-        const tmuxCheck = spawnSync('which', ['tmux'], { encoding: 'utf8' });
-        if (tmuxCheck.status === 0) {
-          // Escape single quotes for shell safety: 'text' -> 'text'\''text'
-          const escapedCmd = cmd.replace(/'/g, "'\\''");
-
-          // Build the transformed command:
-          // 1. Kill existing session (silent if doesn't exist)
-          // 2. Create new detached session with the dev command
-          // 3. Echo confirmation message with instructions for viewing logs
-          const transformedCmd = `SESSION="${sessionName}"; tmux kill-session -t "$SESSION" 2>/dev/null || true; tmux new-session -d -s "$SESSION" '${escapedCmd}' && echo "[Hook] Dev server started in tmux session '${sessionName}'. View logs: tmux capture-pane -t ${sessionName} -p -S -100"`;
-          return JSON.stringify({
-            ...input,
-            tool_input: {
-              ...input.tool_input,
-              command: transformedCmd,
-            },
-          });
-        }
-        // else: tmux not found, pass through original command unchanged
-      }
+    if (!devServerRegex.test(cmd)) {
+      return JSON.stringify(input);
     }
 
-    return JSON.stringify(input);
+    const rawName = path.basename(process.cwd());
+    const sessionName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'dev';
+
+    if (process.platform === 'win32') {
+      const escapedCmd = cmd.replace(/"/g, '""');
+      return JSON.stringify({
+        ...input,
+        tool_input: {
+          ...input.tool_input,
+          command: `start "DevServer-${sessionName}" cmd /k "${escapedCmd}"`,
+        },
+      });
+    }
+
+    const mux = detectMux();
+    if (!mux) return JSON.stringify(input);
+
+    const transformedCmd = mux.type === 'cmux'
+      ? buildCmuxCommand(mux.bin, sessionName, cmd, process.cwd())
+      : buildTmuxCommand(sessionName, cmd);
+
+    return JSON.stringify({
+      ...input,
+      tool_input: { ...input.tool_input, command: transformedCmd },
+    });
   } catch {
-    // Invalid input — pass through original data unchanged
     return typeof rawInput === 'string' ? rawInput : JSON.stringify(rawInput);
   }
 }
