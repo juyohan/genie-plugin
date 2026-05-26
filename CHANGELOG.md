@@ -2,6 +2,11 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.8.4] - 2026-05-26
+
+### Changed
+- refactor(hooks): marketplace.json 자동 업데이트 제거 — 수동 관리로 전환
+
 ## [2.8.3] - 2026-05-26
 
 ### Fixed
