@@ -2,6 +2,11 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.8.3] - 2026-05-26
+
+### Fixed
+- fix(hooks): marketplace.json skip-worktree 해제로 버전 동기화 수정
+
 ## [2.8.2] - 2026-05-26
 
 ### Fixed
