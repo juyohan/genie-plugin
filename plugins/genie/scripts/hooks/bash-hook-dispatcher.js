@@ -7,6 +7,7 @@ const { run: runBlockNoVerify } = require('./block-no-verify');
 const { run: runBranchGuard } = require('./pre-bash-branch-guard');
 const { run: runGitPushReminder } = require('./pre-bash-git-push-reminder');
 const { run: runCommitQuality } = require('./pre-bash-commit-quality');
+const { run: runAutoVersionBump } = require('./pre-bash-auto-version-bump');
 const { run: runGateGuard } = require('./gateguard-fact-force');
 const { run: runCommandLog } = require('./post-bash-command-log');
 const { run: runPrCreated } = require('./post-bash-pr-created');
@@ -34,6 +35,12 @@ const PRE_BASH_HOOKS = [
     run: rawInput => runGateGuard(rawInput),
   },
   // 선택 훅 (해당 명령어일 때만 실행)
+  {
+    id: 'pre:bash:auto-version-bump',
+    profiles: 'minimal,standard,strict',
+    matcher: /git\s+push/,
+    run: rawInput => runAutoVersionBump(rawInput),
+  },
   {
     id: 'pre:bash:git-push-reminder',
     profiles: 'standard,strict',
