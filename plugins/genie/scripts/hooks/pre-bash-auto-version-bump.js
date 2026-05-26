@@ -136,7 +136,13 @@ function run(rawInput) {
     const filesToStage = [pluginJsonPath, changelogPath];
     if (fs.existsSync(claudeMarketplacePath)) filesToStage.push(claudeMarketplacePath);
     if (fs.existsSync(codexPluginPath)) filesToStage.push(codexPluginPath);
-    execSync(`git add --sparse ${filesToStage.map(f => `"${f}"`).join(' ')}`, { cwd: repoRoot, stdio: 'pipe' });
+    // Clear skip-worktree bit before staging (set by agent worktrees)
+    for (const f of filesToStage) {
+      try {
+        execSync(`git update-index --no-skip-worktree "${f}"`, { cwd: repoRoot, stdio: 'pipe' });
+      } catch (_) {}
+    }
+    execSync(`git add ${filesToStage.map(f => `"${f}"`).join(' ')}`, { cwd: repoRoot, stdio: 'pipe' });
     execSync(`git commit -m "chore: bump version to ${newVersion}"`, { cwd: repoRoot, stdio: 'pipe' });
 
     // Update local plugin registry and cache symlink
@@ -147,11 +153,24 @@ function run(rawInput) {
         const pluginKey = `${pluginJson.name}@${(pluginJson.author?.name || 'john').toLowerCase()}`;
 
         if (installed.plugins?.[pluginKey]?.[0]) {
-          const entry = installed.plugins[pluginKey][0];
-          const cacheBase   = path.dirname(entry.installPath);
-          const newCachePath = path.join(cacheBase, newVersion);
+          const entry        = installed.plugins[pluginKey][0];
+          const cacheBase    = path.dirname(entry.installPath);
           const pluginSrcDir = path.join(repoRoot, 'plugins', pluginJson.name);
 
+          // Replace every existing version directory with a symlink so that
+          // even if the Claude Code updater resets installPath to an old version,
+          // the files it loads will always be current.
+          for (const dir of fs.readdirSync(cacheBase)) {
+            const dirPath = path.join(cacheBase, dir);
+            const stat = fs.lstatSync(dirPath);
+            if (stat.isDirectory() && !stat.isSymbolicLink()) {
+              fs.renameSync(dirPath, dirPath + '.bak');
+              fs.symlinkSync(pluginSrcDir, dirPath);
+            }
+          }
+
+          // Create symlink for new version if not already present
+          const newCachePath = path.join(cacheBase, newVersion);
           if (!fs.existsSync(newCachePath)) {
             fs.symlinkSync(pluginSrcDir, newCachePath);
           }
