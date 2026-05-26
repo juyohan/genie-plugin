@@ -4,6 +4,7 @@
 const { isHookEnabled } = require('../lib/hook-flags');
 
 const { run: runBlockNoVerify } = require('./block-no-verify');
+const { run: runBranchGuard } = require('./pre-bash-branch-guard');
 const { run: runGitPushReminder } = require('./pre-bash-git-push-reminder');
 const { run: runCommitQuality } = require('./pre-bash-commit-quality');
 const { run: runGateGuard } = require('./gateguard-fact-force');
@@ -20,6 +21,12 @@ const PRE_BASH_HOOKS = [
     profiles: 'minimal,standard,strict',
     matcher: /--no-verify/,
     run: rawInput => runBlockNoVerify(rawInput),
+  },
+  {
+    id: 'pre:bash:branch-guard',
+    profiles: 'minimal,standard,strict',
+    matcher: /git\s+(commit|push)/,
+    run: rawInput => runBranchGuard(rawInput),
   },
   {
     id: 'pre:bash:gateguard-fact-force',
