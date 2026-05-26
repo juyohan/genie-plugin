@@ -135,7 +135,7 @@ function run(rawInput) {
     const filesToStage = [pluginJsonPath, changelogPath];
     if (fs.existsSync(claudeMarketplacePath)) filesToStage.push(claudeMarketplacePath);
     if (fs.existsSync(codexPluginPath)) filesToStage.push(codexPluginPath);
-    execSync(`git add ${filesToStage.map(f => `"${f}"`).join(' ')}`, { cwd: repoRoot, stdio: 'pipe' });
+    execSync(`git add --sparse ${filesToStage.map(f => `"${f}"`).join(' ')}`, { cwd: repoRoot, stdio: 'pipe' });
     execSync(`git commit -m "chore: bump version to ${newVersion}"`, { cwd: repoRoot, stdio: 'pipe' });
 
     return {
