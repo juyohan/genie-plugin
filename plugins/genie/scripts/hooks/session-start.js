@@ -598,7 +598,147 @@ function autoSyncHooksIfNeeded() {
   }
 }
 
-async function main(source = 'startup') {
+// ── Session Resume Prompt (U1 / U2 / U3) ────────────────────────────────────
+
+const RESUME_WINDOW_MS = 6 * 60 * 60 * 1000; // 6시간
+const RESUME_MAX_CHARS = 2000;
+
+/**
+ * U1: ~/.claude/projects/ 에서 현재 cwd의 최근 6시간 이내 JSONL을 탐색.
+ * 현재 세션(currentTranscriptPath)은 제외한다.
+ * @param {string|null} currentTranscriptPath
+ * @returns {{ path: string, elapsedMs: number } | null}
+ */
+function findRecentClaudeJsonl(currentTranscriptPath) {
+  try {
+    const cwd = normalizePath(process.cwd());
+    const projectsDir = path.join(os.homedir(), '.claude', 'projects');
+    if (!fs.existsSync(projectsDir)) return null;
+
+    // Claude Code가 사용하는 실제 디렉토리명과 직접 매칭 (변환 규칙 의존 회피)
+    const entries = fs.readdirSync(projectsDir, { withFileTypes: true });
+    const matchEntry = entries.find(e => {
+      if (!e.isDirectory()) return false;
+      const decoded = e.name.replace(/-/g, '/');
+      return decoded === cwd || decoded === `/${cwd.replace(/^\//, '')}`;
+    });
+    if (!matchEntry) return null;
+
+    const projectDir = path.join(projectsDir, matchEntry.name);
+    const now = Date.now();
+    const currentBase = currentTranscriptPath ? path.basename(currentTranscriptPath) : null;
+
+    const candidates = fs.readdirSync(projectDir)
+      .filter(f => f.endsWith('.jsonl') && f !== currentBase)
+      .map(f => {
+        const fullPath = path.join(projectDir, f);
+        try {
+          const { mtimeMs } = fs.statSync(fullPath);
+          return { path: fullPath, elapsedMs: now - mtimeMs };
+        } catch {
+          return null;
+        }
+      })
+      .filter(f => f && f.elapsedMs >= 0 && f.elapsedMs <= RESUME_WINDOW_MS)
+      .sort((a, b) => a.elapsedMs - b.elapsedMs);
+
+    return candidates[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * U2: JSONL에서 마지막 교환을 읽어 컨텍스트 문자열로 반환.
+ * @param {string} jsonlPath
+ * @returns {string|null}
+ */
+function extractJsonlContext(jsonlPath) {
+  try {
+    // 대용량 파일 보호: 마지막 64KB만 읽음 (6개 교환 추출에 충분)
+    const MAX_READ_BYTES = 64 * 1024;
+    const stat = fs.statSync(jsonlPath);
+    let content;
+    if (stat.size <= MAX_READ_BYTES) {
+      content = fs.readFileSync(jsonlPath, 'utf8');
+    } else {
+      const fd = fs.openSync(jsonlPath, 'r');
+      try {
+        const buf = Buffer.alloc(MAX_READ_BYTES);
+        const bytesRead = fs.readSync(fd, buf, 0, MAX_READ_BYTES, stat.size - MAX_READ_BYTES);
+        content = buf.slice(0, bytesRead).toString('utf8');
+      } finally {
+        fs.closeSync(fd);
+      }
+    }
+
+    const lines = content.split('\n').filter(Boolean);
+    const exchanges = [];
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line);
+        const role = entry.role ?? entry.message?.role;
+        const raw = entry.message?.content ?? entry.content;
+        const text = typeof raw === 'string'
+          ? raw
+          : Array.isArray(raw)
+            ? raw.filter(c => c?.type === 'text').map(c => c.text ?? '').join(' ')
+            : '';
+        const cleaned = text.trim().slice(0, 300);
+        if (cleaned && (role === 'user' || role === 'assistant')) {
+          exchanges.push({ role, text: cleaned });
+        }
+      } catch {
+        // skip unparseable lines
+      }
+    }
+
+    if (exchanges.length === 0) return null;
+
+    const last = exchanges.slice(-6);
+    const formatted = last.map(e => `[${e.role}] ${e.text}`).join('\n');
+    return formatted.slice(0, RESUME_MAX_CHARS) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * U3: 경과 시간 포맷 (분/시간).
+ * @param {number} elapsedMs
+ * @returns {string}
+ */
+function formatElapsed(elapsedMs) {
+  const totalMin = Math.floor(elapsedMs / 60000);
+  if (totalMin < 60) return `${totalMin}분`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}시간 ${m}분` : `${h}시간`;
+}
+
+/**
+ * U3: 세션 재개 프롬프트 컨텍스트 블록 생성.
+ * @param {string} elapsed
+ * @param {string|null} context
+ * @returns {string}
+ */
+function buildResumePromptBlock(elapsed, context) {
+  const lines = [
+    `[이전 세션 감지] ${elapsed} 전 같은 프로젝트에서 작업한 세션이 있습니다.`,
+    '첫 번째 응답에서 사용자에게 이어서 할지 물어보십시오.',
+    '"네"이면 아래 내용을 참고하고, "아니오"이면 무시하십시오.',
+  ];
+
+  if (context) {
+    lines.push('', '--- 이전 세션 마지막 교환 ---', context, '---');
+  }
+
+  return lines.join('\n');
+}
+
+// ── main ─────────────────────────────────────────────────────────────────────
+
+async function main(source = 'startup', transcriptPath = null) {
   autoSyncHooksIfNeeded();
 
   const sessionsDir = getSessionsDir();
@@ -627,6 +767,18 @@ async function main(source = 'startup') {
   }
 
   if (shouldInjectContext) {
+    // Session resume prompt — startup 시에만 동작
+    if (source === 'startup') {
+      const recent = findRecentClaudeJsonl(transcriptPath);
+      if (recent) {
+        const elapsed = formatElapsed(recent.elapsedMs);
+        const context = extractJsonlContext(recent.path);
+        const block = buildResumePromptBlock(elapsed, context);
+        additionalContextParts.push(block);
+        log(`[SessionStart] 이전 세션 감지 (${elapsed} 전) — 재개 프롬프트 주입`);
+      }
+    }
+
     const instinctSummary = summarizeActiveInstincts(observerContext);
     if (instinctSummary) {
       additionalContextParts.push(instinctSummary);
@@ -841,18 +993,22 @@ process.stdin.on('data', chunk => {
 });
 process.stdin.on('end', () => {
   let source = 'startup';
+  let transcriptPath = null;
   try {
     const input = JSON.parse(stdinStartData);
     if (input && typeof input.source === 'string' && input.source.length > 0) {
       source = input.source;
     }
+    if (input && typeof input.transcript_path === 'string' && input.transcript_path.length > 0) {
+      transcriptPath = input.transcript_path;
+    }
   } catch {
-    // Malformed or empty stdin: keep default 'startup'
+    // Malformed or empty stdin: keep defaults
   }
   if (source === 'compact') {
     log('[SessionStart] Compact resume detected — injecting last active task only');
   }
-  main(source).catch(err => {
+  main(source, transcriptPath).catch(err => {
     console.error('[SessionStart] Error:', err.message);
     process.exitCode = 0; // Don't block on errors
   });
