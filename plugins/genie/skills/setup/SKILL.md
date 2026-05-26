@@ -42,28 +42,18 @@ bash {PLUGIN_ROOT}/skills/setup/scripts/check-health
 
 ---
 
-## Phase 0.5 — 전역 인프라 확인 (warn+continue)
+## Phase 0.5 — 전역 인프라 확인
 
-check-health가 성공하면 전역 인프라 상태를 점검합니다. 항목이 누락되어도 **중단하지 않습니다** — 경고 출력 후 Phase 1로 계속 진행합니다.
+check-health가 성공하면 전역 인프라 상태를 점검합니다.
 
 **점검 항목:**
 
-| 항목 | 확인 방법 | 누락 시 힌트 |
-|------|----------|------------|
-| genie 훅 등록 | `~/.claude/settings.json`에 id `pre:bash:dispatcher` 존재 여부 | `node {PLUGIN_ROOT}/scripts/install-hooks.js` 실행 |
-| genie 에이전트 | `~/.claude/agents/genie-ecc-expert.md` 존재 여부 | `bash {PLUGIN_ROOT}/install.sh` |
+| 항목 | 확인 방법 | 설치 명령 |
+|------|----------|----------|
+| genie 훅 등록 | `~/.claude/settings.json`에 id `genie:pre:bash` 존재 여부 | `node {PLUGIN_ROOT}/scripts/install-hooks.js` |
+| genie 에이전트 | `~/.claude/agents/genie-ecc-expert.md` 존재 여부 | `bash {PLUGIN_ROOT}/../../update.sh` |
 
-**출력 형식 (누락 항목 있을 때):**
-
-```
-전역 인프라 상태:
-  ✅ genie 훅              등록됨
-  ⚠️  genie 에이전트        미설치 → bash {PLUGIN_ROOT}/install.sh
-
-⚠️  일부 전역 인프라가 누락되어 있습니다. 계속 진행합니다.
-```
-
-**출력 형식 (모두 정상일 때):**
+**모두 정상일 때:** 상태를 출력하고 Phase 1로 진행합니다.
 
 ```
 전역 인프라 상태:
@@ -71,7 +61,37 @@ check-health가 성공하면 전역 인프라 상태를 점검합니다. 항목�
   ✅ genie 에이전트        설치됨
 ```
 
-확인 후 Phase 1로 진행합니다.
+**누락 항목이 있을 때:** 상태를 출력한 뒤 `AskUserQuestion`으로 질문합니다.
+
+```
+전역 인프라 상태:
+  ✅ genie 훅              등록됨
+  ⚠️  genie 에이전트        미설치
+```
+
+질문 형식:
+```
+일부 전역 인프라가 누락되어 있습니다. 지금 설치할까요?
+A. 지금 설치 — 누락된 항목을 자동으로 설치합니다.
+B. 건너뛰기 — 나중에 직접 실행합니다.
+```
+
+- **A (설치)**: 누락된 항목의 설치 명령을 순서대로 실행합니다. 항목마다 결과를 출력합니다.
+
+  | 항목 | 성공 | 실패 |
+  |------|------|------|
+  | genie 훅 | `✅ genie 훅 등록 완료` | `❌ genie 훅 등록 실패 — 수동으로 실행하세요: node {PLUGIN_ROOT}/scripts/install-hooks.js` |
+  | genie 에이전트 | `✅ genie 에이전트 설치 완료` | `❌ genie 에이전트 설치 실패 — 수동으로 실행하세요: bash {PLUGIN_ROOT}/../../update.sh` |
+
+  결과 출력 후 Phase 1로 진행합니다.
+- **B (건너뛰기)**: 누락된 각 항목의 설치 명령을 힌트로 출력하고 Phase 1로 진행합니다.
+
+  ```
+  ⚠️  genie 훅 미등록    → node {PLUGIN_ROOT}/scripts/install-hooks.js
+  ⚠️  genie 에이전트 미설치 → bash {PLUGIN_ROOT}/../../update.sh
+  ```
+
+  (정상인 항목은 출력하지 않습니다.)
 
 ---
 
@@ -110,7 +130,10 @@ check-health가 성공하면 전역 인프라 상태를 점검합니다. 항목�
 - 구조: App Router (app/)
 ```
 
-감지 결과를 사용자에게 출력하고 Phase 2로 진행합니다.
+감지 결과를 사용자에게 출력한 뒤 `AskUserQuestion`으로 확인합니다. 옵션은 "맞습니다"와 "틀렸습니다 (Other에 수정 내용 입력)" 두 가지입니다. `AskUserQuestion`의 Other 옵션을 통해 자유 입력을 받습니다.
+
+- **맞습니다**: Phase 2로 진행합니다.
+- **틀렸습니다 (Other 입력)**: 사용자가 Other에 입력한 내용으로 감지 결과를 수정한 뒤 Phase 2로 진행합니다.
 
 ---
 
@@ -238,14 +261,14 @@ Phase 1–3에서 수집한 모든 정보를 바탕으로 5개 파일을 생성�
 
 ## 완료 출력
 
-모든 파일 생성 후 다음을 출력합니다:
+모든 파일 생성 후 다음을 출력합니다. **전역 인프라 상태는 Phase 0.5에서 확인한 실제 결과를 그대로 반영합니다** — 설치됐으면 ✅, 여전히 미설치면 ⚠️ + 힌트 명령을 표시합니다.
 
 ```
 ✅ genie:setup 완료
 
 전역 인프라 상태:
-  ✅ genie 훅              등록됨        (또는 ⚠️ 미등록 → node {PLUGIN_ROOT}/scripts/install-hooks.js)
-  ✅ genie 에이전트        설치됨        (또는 ⚠️ 미설치 → bash {PLUGIN_ROOT}/install.sh)
+  ✅ genie 훅              등록됨
+  ⚠️  genie 에이전트        미설치 → bash {PLUGIN_ROOT}/../../update.sh
 
 생성된 파일:
 - AGENTS.md          (AI 에이전트용 컨텍스트 — Claude·Codex 공용)
@@ -268,11 +291,11 @@ Claude·Codex는 이제 이 프로젝트의 컨텍스트를 세션 시작 시 �
 - 자동 스캔 + 불확실 항목만 질문
 
 **제외 (건드리지 않음):**
-- `~/.claude/rules/` 글로벌 설정 (설치는 install.sh 담당)
+- `~/.claude/rules/` 글로벌 설정 (설치는 `update.sh` 담당)
 - `docs/brainstorms/`, `docs/plans/` 등 워크플로우 산출물
 - `CONTRIBUTING.md` (사람용 기여 가이드)
 - 기존 소스 코드
 
-**Phase 0.5에서 읽기만 하는 항목 (쓰기/수정 없음):**
-- `~/.claude/settings.json` — id 존재 여부 확인만
-- `~/.claude/agents/genie-ecc-expert.md` — 존재 여부 확인만
+**Phase 0.5에서 확인하는 항목:**
+- `~/.claude/settings.json` — id 존재 여부 확인 (A 선택 시 수정됨)
+- `~/.claude/agents/genie-ecc-expert.md` — 존재 여부 확인 (A 선택 시 설치됨)
