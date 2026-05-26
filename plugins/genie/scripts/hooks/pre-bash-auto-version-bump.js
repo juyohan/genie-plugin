@@ -84,10 +84,9 @@ function run(rawInput) {
       };
     }
 
-    const pluginJsonPath        = path.join(repoRoot, '.claude-plugin', 'plugin.json');
-    const claudeMarketplacePath = path.join(repoRoot, '.claude-plugin', 'marketplace.json');
-    const codexPluginPath       = path.join(repoRoot, 'plugins', 'genie', '.codex-plugin', 'plugin.json');
-    const changelogPath         = path.join(repoRoot, 'CHANGELOG.md');
+    const pluginJsonPath  = path.join(repoRoot, '.claude-plugin', 'plugin.json');
+    const codexPluginPath = path.join(repoRoot, 'plugins', 'genie', '.codex-plugin', 'plugin.json');
+    const changelogPath   = path.join(repoRoot, 'CHANGELOG.md');
 
     if (!fs.existsSync(pluginJsonPath)) {
       return {
@@ -107,15 +106,6 @@ function run(rawInput) {
     pluginJson.version = newVersion;
     fs.writeFileSync(pluginJsonPath, JSON.stringify(pluginJson, null, 2) + '\n');
 
-    // Update .claude-plugin/marketplace.json if it exists
-    if (fs.existsSync(claudeMarketplacePath)) {
-      const marketplace = JSON.parse(fs.readFileSync(claudeMarketplacePath, 'utf8'));
-      if (Array.isArray(marketplace.plugins) && marketplace.plugins[0]) {
-        marketplace.plugins[0].version = newVersion;
-        fs.writeFileSync(claudeMarketplacePath, JSON.stringify(marketplace, null, 2) + '\n');
-      }
-    }
-
     // Update .codex-plugin/plugin.json if it exists
     if (fs.existsSync(codexPluginPath)) {
       const codexPlugin = JSON.parse(fs.readFileSync(codexPluginPath, 'utf8'));
@@ -134,7 +124,6 @@ function run(rawInput) {
 
     // Commit
     const filesToStage = [pluginJsonPath, changelogPath];
-    if (fs.existsSync(claudeMarketplacePath)) filesToStage.push(claudeMarketplacePath);
     if (fs.existsSync(codexPluginPath)) filesToStage.push(codexPluginPath);
     // Clear skip-worktree bit before staging (set by agent worktrees)
     for (const f of filesToStage) {
