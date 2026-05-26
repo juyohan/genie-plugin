@@ -2,6 +2,11 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.8.1] - 2026-05-26
+
+### Fixed
+- fix(hooks): sparse-checkout 환경에서 git add 실패 수정
+
 ## [2.8.0] - 2026-05-26
 
 ### Added
