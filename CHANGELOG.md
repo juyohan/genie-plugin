@@ -2,25 +2,6 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
-## [2.5.0] - 2026-05-26
-
-### Added
-- feat(hooks): SessionStart 세션 재개 프롬프트 추가
-- feat(hooks): 보호 브랜치 commit·push 차단 훅 추가
-- feat: cmux orchestrator 지원 및 /genie:push 스마트 푸시 스킬 추가
-- feat(hooks): 멀티플렉서 추상화 레이어 lib/mux.js 도입
-- feat(hooks): cmux 멀티플렉서 지원 추가
-- feat(hooks): 플러그인 설치/업데이트 시 훅 자동 등록
-- feat(hooks): hooks.json 수정 시 settings.json 자동 동기화
-- feat(hooks): brainstorm-suggest.js에 탐색적 질문 감지 및 핸드오프 추가
-- feat(hooks): 모든 Claude 훅 이벤트 커버리지 완성 및 모니터링 시스템 추가
-
-### Fixed
-- fix(setup): genie:setup 훅·에이전트 설치 플로우 개선
-- fix(hooks): session-start.js에 task-tracker 연동 및 세션 보존 기간 조정
-- fix: hooks.json SessionEnd 훅 id 동기화 및 settings.local.json 업데이트
-- fix: install-hooks.js — 구버전 캐시 빈 훅 처리 및 genie 경로 필터 개선
-
 ## [2.4.3] - 2026-05-19
 
 ### Fixed
