@@ -31,7 +31,7 @@ echo ""
 mkdir -p "${AGENTS_DST}"
 echo "Syncing agents → ${AGENTS_DST}"
 
-for src in "${PLUGIN_DIR}/agents/"*.md; do
+for src in "${PLUGIN_DIR}/plugins/genie/agents/"*.md; do
   [ -f "${src}" ] || continue
   name="$(basename "${src}")"
   dst="${AGENTS_DST}/${name}"
