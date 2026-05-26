@@ -3,6 +3,7 @@
 
 const { execSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const MAX_STDIN = 1024 * 1024;
@@ -137,6 +138,36 @@ function run(rawInput) {
     if (fs.existsSync(codexPluginPath)) filesToStage.push(codexPluginPath);
     execSync(`git add --sparse ${filesToStage.map(f => `"${f}"`).join(' ')}`, { cwd: repoRoot, stdio: 'pipe' });
     execSync(`git commit -m "chore: bump version to ${newVersion}"`, { cwd: repoRoot, stdio: 'pipe' });
+
+    // Update local plugin registry and cache symlink
+    const installedPluginsPath = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
+    if (fs.existsSync(installedPluginsPath)) {
+      try {
+        const installed = JSON.parse(fs.readFileSync(installedPluginsPath, 'utf8'));
+        const pluginKey = `${pluginJson.name}@${(pluginJson.author?.name || 'john').toLowerCase()}`;
+
+        if (installed.plugins?.[pluginKey]?.[0]) {
+          const entry = installed.plugins[pluginKey][0];
+          const cacheBase   = path.dirname(entry.installPath);
+          const newCachePath = path.join(cacheBase, newVersion);
+          const pluginSrcDir = path.join(repoRoot, 'plugins', pluginJson.name);
+
+          if (!fs.existsSync(newCachePath)) {
+            fs.symlinkSync(pluginSrcDir, newCachePath);
+          }
+
+          installed.plugins[pluginKey][0] = {
+            ...entry,
+            version:     newVersion,
+            installPath: newCachePath,
+            lastUpdated: new Date().toISOString(),
+          };
+          fs.writeFileSync(installedPluginsPath, JSON.stringify(installed, null, 2) + '\n');
+        }
+      } catch (_) {
+        // registry update is best-effort — don't abort the push
+      }
+    }
 
     return {
       stdout: passThrough,

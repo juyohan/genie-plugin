@@ -2,6 +2,11 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.8.2] - 2026-05-26
+
+### Fixed
+- fix(hooks): auto-version-bump 후 installed_plugins.json 및 캐시 심볼릭 링크 업데이트
+
 ## [2.8.1] - 2026-05-26
 
 ### Fixed
