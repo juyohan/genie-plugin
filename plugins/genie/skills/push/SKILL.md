@@ -9,6 +9,8 @@ allowed-tools: []
 
 AWS CodeCommit과 일반 저장소(GitHub 등)를 자동으로 구분하여 최적의 방식으로 push합니다.
 
+> **⚠ 자격증명 파일 기록 금지**: 임시 자격증명(`AccessKeyId`, `SecretAccessKey`, `SessionToken`)을 `~/.aws/credentials`, `~/.aws/config`, `.env`, 임시 파일 등 **어떤 파일에도 쓰지 않습니다.** 환경변수(`AWS_ACCESS_KEY_ID` 등)로만 전달하며, 세션 종료 시 자동 소멸합니다.
+
 **사용자에게 확인이 필요한 경우** `AskUserQuestion` 도구를 사용하십시오 (스키마 미로드 시 `ToolSearch`로 `select:AskUserQuestion` 먼저 호출).
 
 ---

@@ -1,0 +1,10 @@
+# Local Claude Code settings (auto-generated)
+.claude/genie/
+.claude/worktrees/
+.claude/settings.json
+
+# Runtime lock files
+plugins/genie/.in_use/
+
+# OS
+.DS_Store

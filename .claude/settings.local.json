@@ -106,7 +106,15 @@
       "Bash(grep -v \"test-session-123\" ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)",
       "Bash(mv /tmp/obs_clean.jsonl ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)",
       "Bash(grep -v \"verify-test\" ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)",
-      "Bash(mv /tmp/obs_clean2.jsonl ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)"
+      "Bash(mv /tmp/obs_clean2.jsonl ~/.local/share/ecc-homunculus/projects/c58a60567fdb/observations.jsonl)",
+      "Bash(gh pr *)",
+      "Bash(echo '{\"test\":1}')",
+      "Bash(cp /Users/juyohan/John/ai/john-plugin/.claude-plugin/marketplace.json /tmp/marketplace_backup.json)",
+      "Bash(cp /tmp/marketplace_backup.json /Users/juyohan/John/ai/john-plugin/.claude-plugin/marketplace.json)",
+      "Skill(genie:commit)",
+      "Bash(grep -c '\\\\${CLAUDE_PLUGIN_ROOT}' /Users/juyohan/John/ai/john-plugin/plugins/genie/hooks/hooks.json)",
+      "Bash(echo \"src/config.ts Edit: exit=$? \\(0이면 허용\\)\")",
+      "Skill(genie:push)"
     ]
   }
 }

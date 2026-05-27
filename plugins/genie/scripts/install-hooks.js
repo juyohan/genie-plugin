@@ -25,7 +25,23 @@ function loadJson(filePath, fallback = {}) {
 
 function substitutePluginRoot(obj, pluginDir) {
   const normalized = pluginDir.replace(/\\/g, '/');
-  return JSON.parse(JSON.stringify(obj).replace(/\{\{PLUGIN_ROOT\}\}/g, normalized));
+  // ${CLAUDE_PLUGIN_ROOT} is the canonical placeholder (matches apply.js in Claude Code)
+  // {{PLUGIN_ROOT}} is kept as fallback for backward compat
+  return JSON.parse(
+    JSON.stringify(obj)
+      .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, normalized)
+      .replace(/\{\{PLUGIN_ROOT\}\}/g, normalized)
+  );
+}
+
+function extractCommands(entry) {
+  if (!Array.isArray(entry.hooks)) return new Set();
+  return new Set(entry.hooks.map(h => h.command).filter(Boolean));
+}
+
+function extractCommands(entry) {
+  if (!Array.isArray(entry.hooks)) return new Set();
+  return new Set(entry.hooks.map(h => h.command).filter(Boolean));
 }
 
 function mergeHooks(settings, pluginHooks) {
@@ -33,6 +49,26 @@ function mergeHooks(settings, pluginHooks) {
 
   for (const [event, entries] of Object.entries(pluginHooks)) {
     settings.hooks[event] = settings.hooks[event] || [];
+
+    // Collect commands from incoming entries that carry an id.
+    // Existing no-id entries with the same command are orphans from before
+    // ids were introduced — remove them to prevent duplicate execution.
+    const incomingCommandsWithId = new Set();
+    for (const entry of entries) {
+      if (entry.id) {
+        for (const cmd of extractCommands(entry)) incomingCommandsWithId.add(cmd);
+      }
+    }
+
+    const before = settings.hooks[event].length;
+    settings.hooks[event] = settings.hooks[event].filter(existing => {
+      if (existing.id) return true; // id 있는 항목은 유지 (아래서 update)
+      for (const cmd of extractCommands(existing)) {
+        if (incomingCommandsWithId.has(cmd)) return false; // 같은 command의 고아 항목 제거
+      }
+      return true;
+    });
+    const pruned = before - settings.hooks[event].length;
 
     let added = 0;
     let updated = 0;
@@ -51,12 +87,42 @@ function mergeHooks(settings, pluginHooks) {
       }
     }
 
-    if (added > 0 || updated > 0) {
-      console.log(`  ${event}: +${added} added, ${updated} updated`);
+    if (added > 0 || updated > 0 || pruned > 0) {
+      console.log(`  ${event}: +${added} added, ${updated} updated, -${pruned} orphans removed`);
     }
   }
 
   return settings;
+}
+
+/**
+ * hooks.json에서 제거된 genie 훅이 settings.json의 no-id 항목으로 남아 있는 경우 정리.
+ * pluginDir을 참조하는 no-id 항목 중 현재 hooks.json에 없는 것을 삭제한다.
+ */
+function pruneStaleGeniHooks(settings, allCurrentCommands, pluginDir) {
+  const normalized = pluginDir.replace(/\\/g, '/');
+  let totalPruned = 0;
+
+  for (const [event, entries] of Object.entries(settings.hooks || {})) {
+    const before = entries.length;
+    settings.hooks[event] = entries.filter(existing => {
+      if (existing.id) return true; // id 있는 항목은 이 단계에서 건드리지 않음
+      for (const cmd of extractCommands(existing)) {
+        const normalizedCmd = cmd.replace(/\\/g, '/');
+        if (normalizedCmd.includes(normalized) && !allCurrentCommands.has(cmd)) {
+          return false; // genie 훅인데 현재 hooks.json에 없는 항목 — 제거
+        }
+      }
+      return true;
+    });
+    const pruned = before - settings.hooks[event].length;
+    if (pruned > 0) {
+      console.log(`  ${event}: -${pruned} stale genie hooks removed`);
+      totalPruned += pruned;
+    }
+  }
+
+  return totalPruned;
 }
 
 function getInstalledGeniePaths() {
@@ -71,6 +137,15 @@ function getInstalledGeniePaths() {
     if (!Array.isArray(entries)) continue;
     for (const entry of entries) {
       if (entry?.installPath) {
+        try {
+          const stat = fs.lstatSync(entry.installPath);
+          if (stat.isSymbolicLink()) {
+            // 심볼릭 링크가 이 플러그인 소스 디렉토리를 가리키는 dev 설치인 경우에만 포함
+            // (타 소스를 가리키는 심볼릭 링크는 건너뜀)
+            const realTarget = fs.realpathSync(entry.installPath);
+            if (realTarget !== PLUGIN_DIR) continue;
+          }
+        } catch { continue; }
         const p = path.join(entry.installPath, 'hooks', 'hooks.json');
         if (fs.existsSync(p)) paths.push(p);
       }
@@ -111,6 +186,8 @@ function emptyObsoleteGenieCaches() {
     for (const version of fs.readdirSync(pluginDir)) {
       const versionPath = path.join(pluginDir, version);
       if (installedPaths.has(versionPath)) continue; // 현재 설치 버전은 건너뜀
+      // 심볼릭 링크는 실제 소스를 가리킬 수 있으므로 건너뜀
+      if (fs.lstatSync(versionPath).isSymbolicLink()) continue;
       const hooksPath = path.join(versionPath, 'hooks', 'hooks.json');
       if (!fs.existsSync(hooksPath)) continue;
       const current = fs.readFileSync(hooksPath, 'utf8').trim();
@@ -122,11 +199,21 @@ function emptyObsoleteGenieCaches() {
 }
 
 function patchCacheHooksJson(pluginHooks) {
-  const resolved = substitutePluginRoot({ hooks: pluginHooks }, PLUGIN_DIR);
-
   for (const hooksPath of getInstalledGeniePaths()) {
-    fs.writeFileSync(hooksPath, JSON.stringify(resolved, null, 2) + '\n');
-    console.log(`  patched: ${hooksPath}`);
+    // If this file's real location is inside PLUGIN_DIR (dev symlink), keep {{PLUGIN_ROOT}} placeholders
+    // so running install-hooks.js never overwrites source with machine-specific absolute paths.
+    let isDevSource = false;
+    try {
+      const realHooksPath = fs.realpathSync(hooksPath);
+      isDevSource = realHooksPath.startsWith(PLUGIN_DIR + '/') || realHooksPath.startsWith(PLUGIN_DIR + path.sep);
+    } catch { /* path doesn't exist yet — treat as non-dev */ }
+
+    const content = isDevSource
+      ? { hooks: pluginHooks }
+      : substitutePluginRoot({ hooks: pluginHooks }, PLUGIN_DIR);
+
+    fs.writeFileSync(hooksPath, JSON.stringify(content, null, 2) + '\n');
+    console.log(`  patched${isDevSource ? ' (dev — kept placeholders)' : ''}: ${hooksPath}`);
   }
 
   emptyObsoleteGenieCaches();
@@ -153,7 +240,16 @@ function main() {
     fs.mkdirSync(settingsDir, { recursive: true });
   }
 
+  // 현재 hooks.json의 모든 command 집합 (치환 후) — stale 항목 탐지에 사용
+  const allCurrentCommands = new Set();
+  for (const entries of Object.values(resolvedHooks)) {
+    for (const entry of entries) {
+      for (const cmd of extractCommands(entry)) allCurrentCommands.add(cmd);
+    }
+  }
+
   const settings = loadJson(SETTINGS_PATH);
+  pruneStaleGeniHooks(settings, allCurrentCommands, PLUGIN_DIR);
   const merged = mergeHooks(settings, resolvedHooks);
 
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2) + '\n');

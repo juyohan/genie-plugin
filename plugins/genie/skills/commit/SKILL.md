@@ -66,6 +66,43 @@ printf '=== STATUS ===\n'; git status; printf '\n=== DIFF ===\n'; git diff HEAD;
 
 사용자에게 질문할 때는 플랫폼의 질문 도구를 사용하십시오: Claude Code의 `AskUserQuestion` (스키마가 로드되지 않은 경우 `ToolSearch`로 `select:AskUserQuestion` 먼저 호출), Codex의 `request_user_input`, Gemini의 `ask_user`, Pi의 `ask_user` (`pi-ask-user` 확장 필요). 도구가 없거나 오류가 발생하는 경우에만 채팅 창에 옵션을 제시하십시오. 질문을 소리 없이 건너뛰지 마십시오.
 
+### 단계 0: 자격증명 사전 확인 (CodeCommit만 해당)
+
+```bash
+git remote get-url origin 2>/dev/null
+```
+
+URL 패턴으로 저장소 종류를 판별합니다:
+- `codecommit::` 시작 또는 `git-codecommit.*.amazonaws.com` 포함 → CodeCommit
+- 그 외 → 이 단계를 건너뛰고 단계 1로 진행
+
+**CodeCommit인 경우** 자격증명 유효성을 확인합니다:
+
+```bash
+aws sts get-caller-identity --profile <profile> 2>/dev/null
+```
+
+- **성공 (exit 0)**: 자격증명 유효 → 단계 1로 진행
+- **실패**: 만료 또는 없음 → 아래 MFA 흐름 진행
+
+#### MFA 갱신 흐름
+
+1. `AskUserQuestion`으로 MFA 코드(6자리) 입력 요청
+2. `aws iam list-mfa-devices --profile <profile>`로 디바이스 ARN 조회
+3. `role_arn` 유무에 따라 STS 호출:
+   - `role_arn` 있음: `aws sts assume-role --role-arn <arn> --serial-number <mfa_serial> --token-code <code>`
+   - 없음: `aws sts get-session-token --serial-number <mfa_serial> --token-code <code>`
+4. **성공**: 아래와 같이 환경변수로만 전달 (파일 기록 절대 금지)
+   ```bash
+   export AWS_ACCESS_KEY_ID=<AccessKeyId>
+   export AWS_SECRET_ACCESS_KEY=<SecretAccessKey>
+   export AWS_SESSION_TOKEN=<SessionToken>
+   ```
+   → 단계 1로 진행
+5. **실패**: 오류 메시지 출력 후 중단 (최대 3회 재시도)
+
+> **⚠ 자격증명 파일 기록 금지**: `~/.aws/credentials`, `~/.aws/config` 등 어떤 파일에도 자격증명을 쓰지 않습니다. 환경변수는 세션 종료 시 자동 소멸합니다.
+
 ### 단계 1: 컨텍스트 수집
 
 위의 컨텍스트(Git 상태, 작업 트리 차이, 현재 브랜치, 최근 커밋, 원격 기본 브랜치)를 사용합니다. 이 단계에 필요한 모든 데이터는 이미 준비되어 있으므로 명령어를 다시 실행하지 마십시오.
