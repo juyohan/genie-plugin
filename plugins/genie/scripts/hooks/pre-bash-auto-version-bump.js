@@ -163,19 +163,27 @@ function run(rawInput) {
             } catch (_) {}
           }
 
-          // Create symlink for new version if not already present
+          // Create symlink for new version — use lstatSync to detect broken symlinks
+          // that existsSync misses, preventing EEXIST from aborting the registry update.
           const newCachePath = path.join(cacheBase, newVersion);
-          if (!fs.existsSync(newCachePath)) {
+          try {
+            fs.lstatSync(newCachePath);
+            // already exists (real dir or symlink) — skip creation
+          } catch (_) {
             fs.symlinkSync(pluginSrcDir, newCachePath);
           }
 
-          installed.plugins[pluginKey][0] = {
-            ...entry,
-            version:     newVersion,
-            installPath: newCachePath,
-            lastUpdated: new Date().toISOString(),
-          };
-          fs.writeFileSync(installedPluginsPath, JSON.stringify(installed, null, 2) + '\n');
+          // Registry update is separate from symlink creation so symlink errors
+          // never prevent installed_plugins.json from being written.
+          try {
+            installed.plugins[pluginKey][0] = {
+              ...entry,
+              version:     newVersion,
+              installPath: newCachePath,
+              lastUpdated: new Date().toISOString(),
+            };
+            fs.writeFileSync(installedPluginsPath, JSON.stringify(installed, null, 2) + '\n');
+          } catch (_) {}
         }
       } catch (_) {
         // registry update is best-effort — don't abort the push
