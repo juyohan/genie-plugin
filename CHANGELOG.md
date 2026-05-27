@@ -2,6 +2,21 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.9.4] - 2026-05-27
+
+### Fixed
+- fix(hooks): auto-version-bump 훅 재등록 및 보안·견고성 개선
+
+## [2.9.3] - 2026-05-27
+
+### Fixed
+- fix(hooks): auto-version-bump 훅 재등록 및 보안·견고성 개선
+
+## [2.9.2] - 2026-05-27
+
+### Fixed
+- fix(hooks): auto-version-bump 훅 재등록 및 보안·견고성 개선
+
 ## [2.9.1] - 2026-05-27
 
 ### Changed
