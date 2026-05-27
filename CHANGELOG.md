@@ -2,6 +2,21 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.9.9] - 2026-05-27
+
+### Changed
+- chore: genie:team 스킬 제거
+
+## [2.9.9] - 2026-05-27
+
+### Changed
+- chore: genie:team 스킬 제거
+
+## [2.9.9] - 2026-05-27
+
+### Changed
+- chore: genie:team 스킬 제거
+
 ## [2.9.8] - 2026-05-27
 
 ### Fixed
