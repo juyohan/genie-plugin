@@ -96,9 +96,20 @@ function run(rawInput) {
       };
     }
 
-    const pluginJson     = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
-    const currentVersion = pluginJson.version;
-    const bumpType       = determineBumpType(commits);
+    const pluginJson = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
+
+    // Read version from HEAD, not the working file — prevents stale uncommitted
+    // modifications from causing double-bumps across push attempts.
+    let currentVersion;
+    try {
+      currentVersion = JSON.parse(
+        execSync('git show HEAD:.claude-plugin/plugin.json', { encoding: 'utf8', cwd: repoRoot })
+      ).version;
+    } catch (_) {
+      currentVersion = pluginJson.version;
+    }
+
+    const bumpType = determineBumpType(commits);
     const newVersion     = bumpVersion(currentVersion, bumpType);
     const today          = new Date().toISOString().split('T')[0];
 
