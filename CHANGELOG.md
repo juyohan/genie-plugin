@@ -2,6 +2,21 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.9.7] - 2026-05-27
+
+### Fixed
+- fix(hooks): currentVersion을 HEAD 기준으로 읽어 이중 bump 방지
+
+## [2.9.7] - 2026-05-27
+
+### Fixed
+- fix(hooks): currentVersion을 HEAD 기준으로 읽어 이중 bump 방지
+
+## [2.9.7] - 2026-05-27
+
+### Fixed
+- fix(hooks): currentVersion을 HEAD 기준으로 읽어 이중 bump 방지
+
 ## [2.9.6] - 2026-05-27
 
 ### Fixed
