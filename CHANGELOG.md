@@ -2,6 +2,11 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.9.1] - 2026-05-27
+
+### Changed
+- chore: 품질 검사 스킬, 팀 협업 도구, 로컬 설정 추가
+
 ## [2.9.0] - 2026-05-27
 
 ### Added
