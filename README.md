@@ -71,22 +71,41 @@ cp -R ~/.claude/plugins/genie/rules/* ~/.claude/rules/john/
 
 언어·도메인별 에이전트를 채팅에서 직접 호출합니다.
 
+### 언어별 리뷰어
+
 | 에이전트 | 전문 분야 |
 |----------|----------|
 | `@genie:ts` | TypeScript / JavaScript |
 | `@genie:java` | Java / Spring Boot |
-| `@genie:kotlin` | Kotlin / Android |
+| `@genie:kotlin` | Kotlin / Android / KMP |
 | `@genie:py` | Python |
 | `@genie:go` | Go |
 | `@genie:swift` | Swift / iOS |
+
+### 빌드 수정
+
+| 에이전트 | 전문 분야 |
+|----------|----------|
+| `@genie:fix` | TypeScript / JavaScript 빌드 에러 |
+| `@genie:fix-go` | Go 빌드 에러 |
+| `@genie:fix-java` | Java / Maven / Gradle 빌드 에러 |
+| `@genie:fix-kotlin` | Kotlin / Gradle 빌드 에러 |
+| `@genie:fix-swift` | Swift / Xcode 빌드 에러 |
+
+### 도구
+
+| 에이전트 | 전문 분야 |
+|----------|----------|
+| `@genie:architect` | 시스템 설계 및 아키텍처 결정 |
+| `@genie:planner` | 구현 계획 수립 |
+| `@genie:tdd` | 테스트 주도 개발 |
+| `@genie:review` | 코드 리뷰 (품질·보안·유지보수성) |
 | `@genie:security` | 보안 감사 (OWASP Top 10) |
-| `@genie:db` | JPA / SQL 최적화 |
-| `@genie:e2e` | E2E 테스트 (Playwright) |
-| `@genie:review` | 코드 리뷰 |
-| `@genie:architect` | 시스템 설계 |
 | `@genie:perf` | 성능 분석 및 최적화 |
 | `@genie:refactor` | 리팩토링 및 죽은 코드 정리 |
-| `@genie:tdd` | 테스트 주도 개발 |
+| `@genie:simplify` | 코드 단순화 |
+| `@genie:db` | DB 쿼리 최적화 / 스키마 설계 |
+| `@genie:e2e` | E2E 테스트 (Playwright) |
 | `@genie:docs` | 문서 업데이트 |
 
 ---
