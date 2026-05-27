@@ -25,7 +25,13 @@ function loadJson(filePath, fallback = {}) {
 
 function substitutePluginRoot(obj, pluginDir) {
   const normalized = pluginDir.replace(/\\/g, '/');
-  return JSON.parse(JSON.stringify(obj).replace(/\{\{PLUGIN_ROOT\}\}/g, normalized));
+  // ${CLAUDE_PLUGIN_ROOT} is the canonical placeholder (matches apply.js in Claude Code)
+  // {{PLUGIN_ROOT}} is kept as fallback for backward compat
+  return JSON.parse(
+    JSON.stringify(obj)
+      .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, normalized)
+      .replace(/\{\{PLUGIN_ROOT\}\}/g, normalized)
+  );
 }
 
 function extractCommands(entry) {

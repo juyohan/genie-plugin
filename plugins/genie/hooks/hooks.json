@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/pre-bash-dispatcher.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/pre-bash-dispatcher.js"
           }
         ]
       },
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:write:doc-file-warning scripts/hooks/doc-file-warning.js standard,strict"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:write:doc-file-warning scripts/hooks/doc-file-warning.js standard,strict"
           }
         ]
       },
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:config-protection scripts/hooks/config-protection.js standard,strict",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:config-protection scripts/hooks/config-protection.js standard,strict",
             "timeout": 5
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:edit-write:gateguard-fact-force scripts/hooks/gateguard-fact-force.js standard,strict",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js pre:edit-write:gateguard-fact-force scripts/hooks/gateguard-fact-force.js standard,strict",
             "timeout": 5
           }
         ]
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "GENIE_OBSERVE_PHASE=pre node {{PLUGIN_ROOT}}/scripts/hooks/observe.js",
+            "command": "GENIE_OBSERVE_PHASE=pre node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe.js",
             "async": true,
             "timeout": 5
           }
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-tool-credential-guard.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-tool-credential-guard.js",
             "timeout": 5
           }
         ]
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-tool-credential-guard.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-tool-credential-guard.js",
             "timeout": 5
           }
         ]
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-tool-credential-guard.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-tool-credential-guard.js",
             "timeout": 5
           }
         ]
@@ -96,7 +96,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/brainstorm-suggest.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/brainstorm-suggest.js",
             "timeout": 5
           }
         ]
@@ -109,7 +109,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js session:start scripts/hooks/session-start.js minimal,standard,strict 30000"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-hook-runner.js session:start scripts/hooks/session-start.js minimal,standard,strict 30000"
           }
         ]
       }
@@ -121,7 +121,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/post-bash-dispatcher.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/post-bash-dispatcher.js",
             "async": true,
             "timeout": 30
           }
@@ -133,7 +133,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:quality-gate scripts/hooks/quality-gate.js standard,strict",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:quality-gate scripts/hooks/quality-gate.js standard,strict",
             "async": true,
             "timeout": 30
           }
@@ -145,7 +145,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:edit:design-quality-check scripts/hooks/design-quality-check.js strict",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:edit:design-quality-check scripts/hooks/design-quality-check.js strict",
             "timeout": 10
           }
         ]
@@ -156,7 +156,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:edit:accumulate scripts/hooks/post-edit-accumulator.js standard,strict"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:edit:accumulate scripts/hooks/post-edit-accumulator.js standard,strict"
           }
         ]
       },
@@ -166,7 +166,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:context-monitor scripts/hooks/context-monitor.js standard,strict",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:context-monitor scripts/hooks/context-monitor.js standard,strict",
             "timeout": 5
           }
         ]
@@ -177,7 +177,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "GENIE_OBSERVE_PHASE=post node {{PLUGIN_ROOT}}/scripts/hooks/observe.js",
+            "command": "GENIE_OBSERVE_PHASE=post node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe.js",
             "async": true,
             "timeout": 5
           }
@@ -189,7 +189,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/hooks-auto-sync.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/hooks-auto-sync.js",
             "timeout": 15
           }
         ]
@@ -200,7 +200,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/doc-frontmatter.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/doc-frontmatter.js",
             "async": true,
             "timeout": 10
           }
@@ -214,7 +214,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:tool-failure scripts/hooks/tool-failure-logger.js standard,strict",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-hook-runner.js node scripts/hooks/run-with-flags.js post:tool-failure scripts/hooks/tool-failure-logger.js standard,strict",
             "timeout": 5
           }
         ]
@@ -227,7 +227,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-compact.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-compact.js",
             "timeout": 10
           }
         ]
@@ -240,7 +240,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/subagent-stop.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/subagent-stop.js",
             "async": true,
             "timeout": 10
           }
@@ -254,7 +254,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:format-typecheck scripts/hooks/stop-format-typecheck.js standard,strict 300000",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-hook-runner.js stop:format-typecheck scripts/hooks/stop-format-typecheck.js standard,strict 300000",
             "timeout": 300
           }
         ]
@@ -265,7 +265,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:check-console-log scripts/hooks/check-console-log.js standard,strict 30000"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-hook-runner.js stop:check-console-log scripts/hooks/check-console-log.js standard,strict 30000"
           }
         ]
       },
@@ -275,7 +275,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:evaluate-session scripts/hooks/evaluate-session.js standard,strict 30000",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-hook-runner.js stop:evaluate-session scripts/hooks/evaluate-session.js standard,strict 30000",
             "timeout": 30
           }
         ]
@@ -286,7 +286,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:session-end scripts/hooks/session-end.js minimal,standard,strict 30000",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-hook-runner.js stop:session-end scripts/hooks/session-end.js minimal,standard,strict 30000",
             "async": true,
             "timeout": 10
           }
@@ -298,7 +298,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:cost-tracker scripts/hooks/cost-tracker.js minimal,standard,strict 30000",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-hook-runner.js stop:cost-tracker scripts/hooks/cost-tracker.js minimal,standard,strict 30000",
             "async": true,
             "timeout": 10
           }
@@ -310,7 +310,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js stop:desktop-notify scripts/hooks/desktop-notify.js standard,strict 30000",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-hook-runner.js stop:desktop-notify scripts/hooks/desktop-notify.js standard,strict 30000",
             "async": true,
             "timeout": 10
           }
@@ -324,7 +324,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/stop-hook-runner.js session:end scripts/hooks/session-end-marker.js minimal,standard,strict 10000",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-hook-runner.js session:end scripts/hooks/session-end-marker.js minimal,standard,strict 10000",
             "async": true,
             "timeout": 10
           }
