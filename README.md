@@ -107,6 +107,7 @@ cp -R ~/.claude/plugins/genie/rules/* ~/.claude/rules/john/
 | `@genie:db` | DB 쿼리 최적화 / 스키마 설계 |
 | `@genie:e2e` | E2E 테스트 (Playwright) |
 | `@genie:docs` | 문서 업데이트 |
+| `@genie:unit-worker` | `genie:team` 오케스트레이터가 파견하는 단일 구현 단위 워커 |
 
 ---
 
