@@ -7,6 +7,7 @@ const { run: runBlockNoVerify } = require('./block-no-verify');
 const { run: runBranchGuard } = require('./pre-bash-branch-guard');
 const { run: runGitPushReminder } = require('./pre-bash-git-push-reminder');
 const { run: runCommitQuality } = require('./pre-bash-commit-quality');
+const { run: runAutoVersionBump } = require('./pre-bash-auto-version-bump');
 const { run: runGateGuard } = require('./gateguard-fact-force');
 const { run: runCommandLog } = require('./post-bash-command-log');
 const { run: runPrCreated } = require('./post-bash-pr-created');
@@ -16,6 +17,9 @@ const MAX_STDIN = 1024 * 1024;
 
 const PRE_BASH_HOOKS = [
   // 필수 훅
+  // 주의: branch-guard는 auto-version-bump보다 반드시 먼저 실행되어야 합니다.
+  // branch-guard가 exitCode 2를 반환하면 이후 훅이 중단되므로,
+  // 보호 브랜치에서 version bump 커밋이 생성되는 것을 막습니다.
   {
     id: 'pre:bash:block-no-verify',
     profiles: 'minimal,standard,strict',
@@ -34,6 +38,12 @@ const PRE_BASH_HOOKS = [
     run: rawInput => runGateGuard(rawInput),
   },
   // 선택 훅 (해당 명령어일 때만 실행)
+  {
+    id: 'pre:bash:auto-version-bump',
+    profiles: 'minimal,standard,strict',
+    matcher: /git\s+push/,
+    run: rawInput => runAutoVersionBump(rawInput),
+  },
   {
     id: 'pre:bash:git-push-reminder',
     profiles: 'standard,strict',

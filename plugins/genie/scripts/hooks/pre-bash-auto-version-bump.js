@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -103,14 +103,13 @@ function run(rawInput) {
     const today          = new Date().toISOString().split('T')[0];
 
     // Update plugin.json
-    pluginJson.version = newVersion;
-    fs.writeFileSync(pluginJsonPath, JSON.stringify(pluginJson, null, 2) + '\n');
+    const updatedPluginJson = { ...pluginJson, version: newVersion };
+    fs.writeFileSync(pluginJsonPath, JSON.stringify(updatedPluginJson, null, 2) + '\n');
 
     // Update .codex-plugin/plugin.json if it exists
     if (fs.existsSync(codexPluginPath)) {
       const codexPlugin = JSON.parse(fs.readFileSync(codexPluginPath, 'utf8'));
-      codexPlugin.version = newVersion;
-      fs.writeFileSync(codexPluginPath, JSON.stringify(codexPlugin, null, 2) + '\n');
+      fs.writeFileSync(codexPluginPath, JSON.stringify({ ...codexPlugin, version: newVersion }, null, 2) + '\n');
     }
 
     // Update CHANGELOG.md — insert before first ## [ entry
@@ -128,11 +127,14 @@ function run(rawInput) {
     // Clear skip-worktree bit before staging (set by agent worktrees)
     for (const f of filesToStage) {
       try {
-        execSync(`git update-index --no-skip-worktree "${f}"`, { cwd: repoRoot, stdio: 'pipe' });
+        spawnSync('git', ['update-index', '--no-skip-worktree', f], { cwd: repoRoot, stdio: 'pipe' });
       } catch (_) {}
     }
-    execSync(`git add ${filesToStage.map(f => `"${f}"`).join(' ')}`, { cwd: repoRoot, stdio: 'pipe' });
-    execSync(`git commit -m "chore: bump version to ${newVersion}"`, { cwd: repoRoot, stdio: 'pipe' });
+    const addResult = spawnSync('git', ['add', ...filesToStage], { cwd: repoRoot, stdio: 'pipe' });
+    if (addResult.status !== 0) {
+      return { stdout: passThrough, stderr: '[auto-version-bump] git add failed — skipping bump.\n', exitCode: 0 };
+    }
+    spawnSync('git', ['commit', '-m', `chore: bump version to ${newVersion}`], { cwd: repoRoot, stdio: 'pipe' });
 
     // Update local plugin registry and cache symlink
     const installedPluginsPath = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
@@ -146,16 +148,19 @@ function run(rawInput) {
           const cacheBase    = path.dirname(entry.installPath);
           const pluginSrcDir = path.join(repoRoot, 'plugins', pluginJson.name);
 
-          // Replace every existing version directory with a symlink so that
-          // even if the Claude Code updater resets installPath to an old version,
-          // the files it loads will always be current.
+          // Replace real version directories with symlinks so Claude Code always
+          // loads current source even if installPath falls back to an old version.
+          // Skip .bak entries to prevent recursive accumulation.
           for (const dir of fs.readdirSync(cacheBase)) {
+            if (dir.includes('.bak')) continue;
             const dirPath = path.join(cacheBase, dir);
-            const stat = fs.lstatSync(dirPath);
-            if (stat.isDirectory() && !stat.isSymbolicLink()) {
-              fs.renameSync(dirPath, dirPath + '.bak');
-              fs.symlinkSync(pluginSrcDir, dirPath);
-            }
+            try {
+              const stat = fs.lstatSync(dirPath);
+              if (stat.isDirectory() && !stat.isSymbolicLink()) {
+                fs.renameSync(dirPath, dirPath + '.bak');
+                fs.symlinkSync(pluginSrcDir, dirPath);
+              }
+            } catch (_) {}
           }
 
           // Create symlink for new version if not already present
