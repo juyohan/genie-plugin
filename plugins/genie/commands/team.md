@@ -1,5 +1,5 @@
 ---
-description: Parallel plan execution — implement independent units simultaneously in isolated worktrees
+description: 병렬 플랜 실행 — 독립적인 구현 단위들을 격리된 워크트리에서 동시에 실행합니다
 model: sonnet
 ---
 

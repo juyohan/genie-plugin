@@ -1,5 +1,5 @@
 ---
-description: Create or update STRATEGY.md with product direction, goals, metrics
+description: STRATEGY.md 생성 또는 업데이트 — 제품 방향, 목표, 지표를 관리합니다
 model: opus
 ---
 

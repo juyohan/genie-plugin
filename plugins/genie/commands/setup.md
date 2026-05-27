@@ -1,5 +1,5 @@
 ---
-description: Initialize a new project — scan the stack, ask only what's uncertain, and generate CLAUDE.md + docs/
+description: 새 프로젝트 초기화 — 스택 자동 감지, 불확실한 항목만 질문, CLAUDE.md + docs/ 생성
 model: sonnet
 ---
 

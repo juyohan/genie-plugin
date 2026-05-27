@@ -1,5 +1,5 @@
 ---
-description: Workflow guidance — which genie command to use right now?
+description: 워크플로우 안내 — 지금 어떤 genie 커맨드를 써야 할지 알려줍니다
 model: haiku
 ---
 

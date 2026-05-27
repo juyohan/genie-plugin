@@ -1,5 +1,5 @@
 ---
-description: Capture lessons learned — document solved problems for future reference
+description: 학습 포착 — 해결된 문제를 미래 참조용으로 문서화합니다
 model: haiku
 ---
 

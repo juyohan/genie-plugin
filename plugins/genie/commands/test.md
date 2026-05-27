@@ -1,5 +1,5 @@
 ---
-description: Test-driven development — write failing tests first (RED to GREEN to IMPROVE)
+description: 테스트 주도 개발 — 실패 테스트 먼저 작성 (RED → GREEN → IMPROVE)
 model: sonnet
 ---
 
