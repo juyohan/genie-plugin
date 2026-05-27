@@ -2,6 +2,15 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.9.0] - 2026-05-27
+
+### Added
+- feat(hooks): 자격증명 파일 쓰기 차단 훅 추가 및 git 핸드오프 규칙 구현
+
+### Fixed
+- fix(hooks): {{PLUGIN_ROOT}} → \${CLAUDE_PLUGIN_ROOT} 플레이스홀더 교체
+- fix(hooks): install-hooks.js 고아 항목 정리 로직 추가
+
 ## [2.8.4] - 2026-05-26
 
 ### Changed
