@@ -2,6 +2,16 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.9.6] - 2026-05-27
+
+### Fixed
+- fix(hooks): installed_plugins.json 업데이트 누락 수정
+
+## [2.9.5] - 2026-05-27
+
+### Fixed
+- fix(hooks): installed_plugins.json 업데이트 누락 수정
+
 ## [2.9.4] - 2026-05-27
 
 ### Fixed
