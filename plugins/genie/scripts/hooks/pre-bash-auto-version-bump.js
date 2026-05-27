@@ -96,9 +96,20 @@ function run(rawInput) {
       };
     }
 
-    const pluginJson     = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
-    const currentVersion = pluginJson.version;
-    const bumpType       = determineBumpType(commits);
+    const pluginJson = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
+
+    // Read version from HEAD, not the working file — prevents stale uncommitted
+    // modifications from causing double-bumps across push attempts.
+    let currentVersion;
+    try {
+      currentVersion = JSON.parse(
+        execSync('git show HEAD:.claude-plugin/plugin.json', { encoding: 'utf8', cwd: repoRoot })
+      ).version;
+    } catch (_) {
+      currentVersion = pluginJson.version;
+    }
+
+    const bumpType = determineBumpType(commits);
     const newVersion     = bumpVersion(currentVersion, bumpType);
     const today          = new Date().toISOString().split('T')[0];
 
@@ -163,19 +174,27 @@ function run(rawInput) {
             } catch (_) {}
           }
 
-          // Create symlink for new version if not already present
+          // Create symlink for new version — use lstatSync to detect broken symlinks
+          // that existsSync misses, preventing EEXIST from aborting the registry update.
           const newCachePath = path.join(cacheBase, newVersion);
-          if (!fs.existsSync(newCachePath)) {
+          try {
+            fs.lstatSync(newCachePath);
+            // already exists (real dir or symlink) — skip creation
+          } catch (_) {
             fs.symlinkSync(pluginSrcDir, newCachePath);
           }
 
-          installed.plugins[pluginKey][0] = {
-            ...entry,
-            version:     newVersion,
-            installPath: newCachePath,
-            lastUpdated: new Date().toISOString(),
-          };
-          fs.writeFileSync(installedPluginsPath, JSON.stringify(installed, null, 2) + '\n');
+          // Registry update is separate from symlink creation so symlink errors
+          // never prevent installed_plugins.json from being written.
+          try {
+            installed.plugins[pluginKey][0] = {
+              ...entry,
+              version:     newVersion,
+              installPath: newCachePath,
+              lastUpdated: new Date().toISOString(),
+            };
+            fs.writeFileSync(installedPluginsPath, JSON.stringify(installed, null, 2) + '\n');
+          } catch (_) {}
         }
       } catch (_) {
         // registry update is best-effort — don't abort the push
