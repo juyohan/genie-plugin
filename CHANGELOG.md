@@ -2,6 +2,21 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.9.8] - 2026-05-27
+
+### Fixed
+- fix(hooks): marketplace.json 버전 자동 동기화 추가
+
+## [2.9.8] - 2026-05-27
+
+### Fixed
+- fix(hooks): marketplace.json 버전 자동 동기화 추가
+
+## [2.9.8] - 2026-05-27
+
+### Fixed
+- fix(hooks): marketplace.json 버전 자동 동기화 추가
+
 ## [2.9.7] - 2026-05-27
 
 ### Fixed
