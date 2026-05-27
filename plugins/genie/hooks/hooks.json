@@ -54,6 +54,39 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "id": "genie:pre:write:credential-guard",
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-tool-credential-guard.js",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "id": "genie:pre:edit:credential-guard",
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-tool-credential-guard.js",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "id": "genie:pre:multiedit:credential-guard",
+        "matcher": "MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{PLUGIN_ROOT}}/scripts/hooks/pre-tool-credential-guard.js",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [

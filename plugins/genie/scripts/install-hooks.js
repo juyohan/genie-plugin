@@ -71,6 +71,15 @@ function getInstalledGeniePaths() {
     if (!Array.isArray(entries)) continue;
     for (const entry of entries) {
       if (entry?.installPath) {
+        try {
+          const stat = fs.lstatSync(entry.installPath);
+          if (stat.isSymbolicLink()) {
+            // 심볼릭 링크가 이 플러그인 소스 디렉토리를 가리키는 dev 설치인 경우에만 포함
+            // (타 소스를 가리키는 심볼릭 링크는 건너뜀)
+            const realTarget = fs.realpathSync(entry.installPath);
+            if (realTarget !== PLUGIN_DIR) continue;
+          }
+        } catch { continue; }
         const p = path.join(entry.installPath, 'hooks', 'hooks.json');
         if (fs.existsSync(p)) paths.push(p);
       }
@@ -111,6 +120,8 @@ function emptyObsoleteGenieCaches() {
     for (const version of fs.readdirSync(pluginDir)) {
       const versionPath = path.join(pluginDir, version);
       if (installedPaths.has(versionPath)) continue; // 현재 설치 버전은 건너뜀
+      // 심볼릭 링크는 실제 소스를 가리킬 수 있으므로 건너뜀
+      if (fs.lstatSync(versionPath).isSymbolicLink()) continue;
       const hooksPath = path.join(versionPath, 'hooks', 'hooks.json');
       if (!fs.existsSync(hooksPath)) continue;
       const current = fs.readFileSync(hooksPath, 'utf8').trim();
@@ -122,11 +133,21 @@ function emptyObsoleteGenieCaches() {
 }
 
 function patchCacheHooksJson(pluginHooks) {
-  const resolved = substitutePluginRoot({ hooks: pluginHooks }, PLUGIN_DIR);
-
   for (const hooksPath of getInstalledGeniePaths()) {
-    fs.writeFileSync(hooksPath, JSON.stringify(resolved, null, 2) + '\n');
-    console.log(`  patched: ${hooksPath}`);
+    // If this file's real location is inside PLUGIN_DIR (dev symlink), keep {{PLUGIN_ROOT}} placeholders
+    // so running install-hooks.js never overwrites source with machine-specific absolute paths.
+    let isDevSource = false;
+    try {
+      const realHooksPath = fs.realpathSync(hooksPath);
+      isDevSource = realHooksPath.startsWith(PLUGIN_DIR + '/') || realHooksPath.startsWith(PLUGIN_DIR + path.sep);
+    } catch { /* path doesn't exist yet — treat as non-dev */ }
+
+    const content = isDevSource
+      ? { hooks: pluginHooks }
+      : substitutePluginRoot({ hooks: pluginHooks }, PLUGIN_DIR);
+
+    fs.writeFileSync(hooksPath, JSON.stringify(content, null, 2) + '\n');
+    console.log(`  patched${isDevSource ? ' (dev — kept placeholders)' : ''}: ${hooksPath}`);
   }
 
   emptyObsoleteGenieCaches();
