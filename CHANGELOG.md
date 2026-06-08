@@ -2,6 +2,30 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.11.0] - 2026-06-08
+
+### Added
+- feat(team): 루트 오케스트레이터 + unit-worker 에이전트 기반 멀티에이전트 아키텍처 도입
+
+### Changed
+- refactor(genie): 멀티에이전트 아키텍처 정리 및 레거시 파일 제거
+
+## [2.11.0] - 2026-06-08
+
+### Added
+- feat(team): 루트 오케스트레이터 + unit-worker 에이전트 기반 멀티에이전트 아키텍처 도입
+
+### Changed
+- refactor(genie): 멀티에이전트 아키텍처 정리 및 레거시 파일 제거
+
+## [2.11.0] - 2026-06-08
+
+### Added
+- feat(team): 루트 오케스트레이터 + unit-worker 에이전트 기반 멀티에이전트 아키텍처 도입
+
+### Changed
+- refactor(genie): 멀티에이전트 아키텍처 정리 및 레거시 파일 제거
+
 ## [2.10.0] - 2026-05-27
 
 ### Added
