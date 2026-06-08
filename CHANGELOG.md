@@ -2,6 +2,16 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.11.1] - 2026-06-08
+
+### Fixed
+- fix(skills): PR #13 리뷰 반영 — revert→reset 및 커버리지 기준 통일
+
+## [2.11.1] - 2026-06-08
+
+### Fixed
+- fix(skills): PR #13 리뷰 반영 — revert→reset 및 커버리지 기준 통일
+
 ## [2.11.0] - 2026-06-08
 
 ### Added
