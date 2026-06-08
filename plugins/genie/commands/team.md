@@ -1,5 +1,5 @@
 ---
-description: 병렬 플랜 실행 — 독립적인 구현 단위들을 격리된 워크트리에서 동시에 실행합니다
+description: 병렬 플랜 실행 — 독립적인 구현 단위들을 같은 브랜치에서 동시에 실행하고 웨이브 단위로 커밋합니다
 model: sonnet
 ---
 
@@ -10,83 +10,101 @@ model: sonnet
 
 # `genie:team`
 
-> Execute a plan's independent units in parallel worktrees — coordinate multiple agents, merge in dependency order.
+> 플랜의 독립 단위들을 같은 브랜치에서 병렬로 실행하고, 웨이브 완료 시 오케스트레이터가 한 번에 커밋합니다.
 
-`genie:team` is the **parallel execution** skill. It reads a `genie:plan` plan, builds a dependency graph from the U-IDs, and dispatches multiple agents simultaneously — each in an isolated git worktree. Independent units run in parallel; dependent units wait for their prerequisites. The orchestrator merges branches in dependency order, runs tests after each merge, and hands off to review.
+`genie:team`은 **병렬 실행** 스킬입니다. `genie:plan` 플랜을 읽고 U-ID에서 의존성 그래프를 구성한 뒤, 여러 에이전트를 현재 브랜치에서 동시에 파견합니다. 워커들은 단계마다 체크포인트를 보고하고, 오케스트레이터가 계속·위임·완료를 결정합니다. 위임이 필요하면 `.agent-handoff/` 상태 파일로 다음 에이전트에게 작업을 인수인계합니다.
 
-Use `genie:work` for single-unit or small-scope work. Use `genie:team` when your plan has multiple independent implementation units that benefit from simultaneous execution.
+단일 단위 또는 소규모 작업은 `genie:work`를 사용하세요. 독립 구현 단위가 여러 개이고 병렬 실행 이점이 있을 때 `genie:team`을 사용하세요.
 
 ---
 
 ## TL;DR
 
-| Question | Answer |
-|----------|--------|
-| What does it do? | Reads a plan, builds execution waves from dependency graph, dispatches parallel agents in isolated worktrees, merges in order |
-| When to use it | Plans with 3+ independent units; large features where parallel execution saves time |
-| What it produces | Committed implementation across all plan units, ready for review |
-| What's next | `/genie:review` |
-| vs `genie:work` | `work` decides internally whether to parallelize; `team` always orchestrates explicitly with visible wave structure |
+| 질문 | 답변 |
+|------|------|
+| 무엇을 하나? | 플랜을 읽고 의존성 그래프로 실행 웨이브를 구성, 같은 브랜치에서 에이전트들이 파일을 병렬 작성하고 오케스트레이터가 웨이브 단위로 커밋 |
+| 언제 쓰나? | 독립 구현 단위 3개 이상; 병렬 실행으로 시간을 단축하고 싶을 때 |
+| 산출물 | 모든 플랜 단위가 구현·커밋된 상태, 리뷰 준비 완료 |
+| 다음 단계 | `/genie:review` |
+| vs `genie:work` | `work`는 내부에서 병렬 여부를 자체 결정; `team`은 같은 브랜치에서 에이전트들이 파일을 병렬 작성하고 오케스트레이터가 웨이브 단위로 커밋 |
 
 ---
 
-## How It Works
+## 동작 방식
 
 ```text
 /genie:plan
-    |  U-IDs, files, dependencies, test scenarios
+    |  U-ID, 파일, 의존성, 테스트 시나리오
     v
-/genie:team
-    |  Wave 1: [U1, U2, U4] → parallel worktrees → merge → test
-    |  Wave 2: [U3, U5]     → parallel worktrees → merge → test
-    |  Wave 3: [U6]         → inline             → test
+/genie:team (오케스트레이터) — 현재 브랜치 유지
+    |
+    |  웨이브 1: worker-U1 ──┐
+    |            worker-U2 ──┤ 병렬 파견 (같은 브랜치, 다른 파일)
+    |            worker-U4 ──┘
+    |              ↓ 체크포인트 보고 (단계 완료마다)
+    |              오케스트레이터 평가 → 계속 / 위임 / 완료
+    |              위임 시: .agent-handoff/U{id}.md → specialist 파견
+    |              git commit "feat: [Wave 1] U1·U2·U4 구현"
+    |
+    |  웨이브 2: worker-U3 ──┐ (선행 웨이브 결과 프롬프트에 포함)
+    |            worker-U5 ──┘
+    |              git commit "feat: [Wave 2] U3·U5 구현"
     v
 /genie:review
 ```
 
-### Waves
+### 웨이브
 
-A wave is a batch of units with no dependencies on each other — only on units from earlier waves. Units in the same wave run simultaneously in isolated worktrees.
+같은 웨이브의 단위들은 서로 의존하지 않습니다 — 이전 웨이브 단위에만 의존하거나 완전히 독립적입니다. 같은 웨이브 내 단위들은 동시에 병렬 실행됩니다.
 
-### Worktree Isolation
+### 체크포인트 기반 통신
 
-Each unit gets its own branch (`team/<unit-id>`) in its own directory (`.worktrees/team/<unit-id>`). Filesystem-level conflicts are impossible during parallel work; overlaps surface as merge conflicts when branches are integrated, and the orchestrator handles them explicitly.
+워커는 단계마다 체크포인트를 보고하고, 오케스트레이터가 다음 행동을 결정합니다:
 
-### Merge Order
+- **오케스트레이터 → 워커**: 컨텍스트 패키지를 프롬프트에 직접 전달
+- **워커 → 오케스트레이터**: 단계 완료 시 체크포인트 보고 (진행률·완료·미완료·판단 요청)
+- **계속**: `SendMessage`로 다음 단계 지시 → 워커 재개
+- **위임**: `.agent-handoff/<unit-id>.md` 생성 → 전문 에이전트 파견 (보안·성능·리팩토링 등)
+- **웨이브 간 전달**: 다음 웨이브 프롬프트에 선행 결과 삽입 (실행 중 주입 불가)
 
-After each wave, branches merge into the target branch in dependency order. Tests run after each merge. Conflicts are resolved before continuing to the next wave.
+### 파일 파티셔닝
 
----
+워커들은 같은 브랜치에서 실행되지만, 파일 겹침 확인으로 각 워커가 서로 다른 파일만 담당하도록 보장합니다. 겹치는 단위는 자동으로 직렬 강등됩니다.
 
-## When to Reach For It
+### 웨이브 커밋
 
-Reach for `genie:team` when:
-
-- Your plan has 3 or more independent implementation units
-- Parallel execution would meaningfully reduce total implementation time
-- You want explicit, visible orchestration rather than `genie:work`'s internal decision
-
-Skip `genie:team` when:
-
-- The plan has 1–2 units, or all units are sequentially dependent → `genie:work`
-- You don't have a plan yet → `genie:plan` first
-- The scope is small enough that parallelism adds overhead without benefit
+각 웨이브 완료 후 오케스트레이터가 해당 웨이브의 모든 변경 파일을 한 번에 스테이징·커밋합니다. 커밋 후 테스트를 실행하고, 실패 시 `git revert HEAD --no-edit`으로 웨이브 커밋 전체를 롤백합니다.
 
 ---
 
-## Reference
+## 언제 쓰나
 
-| Argument | Effect |
-|----------|--------|
-| _(empty)_ | Auto-uses the latest active plan in `docs/plans/` |
-| `<plan path>` | Use the specified plan |
+`genie:team`을 쓸 때:
+
+- 플랜에 독립 구현 단위가 3개 이상
+- 병렬 실행으로 전체 구현 시간을 단축할 수 있을 때
+- `genie:work` 내부 결정이 아닌, 명시적인 웨이브 구조와 에이전트 통신이 필요할 때
+
+`genie:team`을 건너뛸 때:
+
+- 단위가 1–2개이거나 모두 순차 의존 → `genie:work`
+- 아직 플랜이 없음 → `genie:plan` 먼저
+- 범위가 작아 병렬화 오버헤드가 더 클 때
 
 ---
 
-## See Also
+## 레퍼런스
 
-- [`genie:plan`](./plan.md) — produces the plan `genie:team` executes
-- [`genie:work`](./work.md) — single-unit or small-scope execution
-- [`genie:worktree`](./worktree.md) — create a single isolated worktree manually
-- [`genie:review`](./review.md) — review after all units are implemented
-- [`genie:learn`](./learn.md) — capture reusable learning after shipping
+| 인수 | 동작 |
+|------|------|
+| _(없음)_ | `docs/plans/`에서 최신 active 플랜 자동 사용 |
+| `<플랜 경로>` | 지정한 플랜 사용 |
+
+---
+
+## 관련 커맨드
+
+- [`genie:plan`](./plan.md) — `genie:team`이 실행할 플랜 생성
+- [`genie:work`](./work.md) — 단일 단위 또는 소규모 실행
+- [`genie:review`](./review.md) — 모든 단위 구현 완료 후 리뷰
+- [`genie:learn`](./learn.md) — 배운 내용 자산화

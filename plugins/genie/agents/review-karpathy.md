@@ -4,6 +4,7 @@ description: Andrej Karpathy의 LLM 코딩 원칙 기반 리뷰어. "모델이 �
 tools: Read, Grep, Glob, Bash
 model: inherit
 color: yellow
+internal: true
 ---
 
 # Karpathy 리뷰어 (Karpathy Reviewer)

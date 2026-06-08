@@ -51,22 +51,19 @@ check-health가 성공하면 전역 인프라 상태를 점검합니다.
 | 항목 | 확인 방법 | 설치 명령 |
 |------|----------|----------|
 | genie 훅 등록 | `~/.claude/settings.json`에 id `genie:pre:bash` 존재 여부 | `node {PLUGIN_ROOT}/scripts/install-hooks.js` |
-| genie 에이전트 | `~/.claude/agents/genie-ecc-expert.md` 존재 여부 | `bash {PLUGIN_ROOT}/../../update.sh` |
 
 **모두 정상일 때:** 상태를 출력하고 Phase 1로 진행합니다.
 
 ```
 전역 인프라 상태:
   ✅ genie 훅              등록됨
-  ✅ genie 에이전트        설치됨
 ```
 
 **누락 항목이 있을 때:** 상태를 출력한 뒤 `AskUserQuestion`으로 질문합니다.
 
 ```
 전역 인프라 상태:
-  ✅ genie 훅              등록됨
-  ⚠️  genie 에이전트        미설치
+  ⚠️  genie 훅              미등록
 ```
 
 질문 형식:
@@ -298,4 +295,3 @@ Claude·Codex는 이제 이 프로젝트의 컨텍스트를 세션 시작 시 �
 
 **Phase 0.5에서 확인하는 항목:**
 - `~/.claude/settings.json` — id 존재 여부 확인 (A 선택 시 수정됨)
-- `~/.claude/agents/genie-ecc-expert.md` — 존재 여부 확인 (A 선택 시 설치됨)

@@ -50,14 +50,14 @@ model: haiku
 
 ## 빠른 참조
 
-- **빌드 실패** → `build-error-resolver` 에이전트
-- **보안 검토** → `security-reviewer` 에이전트
-- **TypeScript** → `typescript-reviewer` 에이전트
-- **Python** → `python-reviewer` 에이전트
-- **Go** → `go-reviewer` 에이전트
-- **Java** → `java-reviewer` 에이전트
-- **Kotlin** → `kotlin-reviewer` 에이전트
-- **Swift** → `swift-reviewer` 에이전트
+- **빌드 실패** → `@genie:fix` 에이전트
+- **보안 검토** → `@genie:security` 에이전트
+- **TypeScript** → `@genie:ts` 에이전트
+- **Python** → `@genie:py` 에이전트
+- **Go** → `@genie:go` 에이전트
+- **Java** → `@genie:java` 에이전트
+- **Kotlin** → `@genie:kotlin` 에이전트
+- **Swift** → `@genie:swift` 에이전트
 
 ---
 

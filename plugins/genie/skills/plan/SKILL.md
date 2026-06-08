@@ -50,15 +50,32 @@ allowed-tools:
 
 ## 4. 조사
 
-**항상 병렬 실행:**
+**항상 병렬 실행 (파일·문서 읽기):**
 - `docs/brainstorms/`, `docs/plans/`, `docs/solutions/`에서 관련 문서 검색
 - 수정할 파일과 인접 코드 읽기, 기존 패턴 파악
+
+**선행 분석 결과 재사용:** 소스 brainstorm 문서(`docs/brainstorms/`)에 `code-explorer` 사전 분석 결과가 있으면 먼저 읽고, 신규 발견이 필요한 부분만 좁혀서 에이전트를 실행한다. 이미 분석된 파일·패턴은 재실행하지 않는다.
+
+**Standard/Deep — 에이전트 병렬 디스패치:**
+
+| 에이전트 | 담당 | 트리거 조건 |
+|---------|------|-----------|
+| `code-explorer` | 관련 파일·기존 패턴·사용 예시 분석 | 항상 (선행 결과 없는 범위만) |
+| `architect` | 아키텍처 결정 사항 검토, 설계 리스크 파악 | Key Technical Decisions 포함 시 |
+| `genie:security` | 보안 함의 초기 스캔 | 인증·권한·외부 API·DB 변경 포함 시 |
+
+에이전트 결과는 다음 섹션에 통합됩니다:
+- `code-explorer` → Context & Research, 기존 패턴 반영
+- `architect` → Key Technical Decisions, Risks & Dependencies
+- `genie:security` → Risks & Dependencies (보안 항목)
 
 **조건부 (고위험 또는 외부 의존성):**
 - 외부 프레임워크/라이브러리 문서 참조
 - Standard/Deep: 에지 케이스 흐름 분석
 
 조사 결과가 외부 계약 표면(API 인터페이스, DB 스키마)을 드러내면 플랜 깊이를 Deep으로 상향하십시오.
+
+**폴백:** 병렬 에이전트 미지원 환경에서는 `code-explorer`만 순차 실행한다.
 
 ## 5. 플랜 구조화
 
@@ -99,11 +116,11 @@ R/A/F/AE-ID를 Requirements, Units, 테스트 시나리오에 추적하십시오
 - 임계값: 총점 2점 이상, 또는 고위험 도메인 보너스 해당 시
 
 에이전트 할당 (섹션당 1~3개, 총 8개 이하):
-- Requirements/Open Questions → `code-explorer`, `code-architect`
-- Context/Sources → `code-explorer`, `docs-lookup`
+- Requirements/Open Questions → `code-explorer`, `architect`
+- Context/Sources → `code-explorer`, `docs`
 - Key Technical Decisions → `architect`
-- Implementation Units → `code-explorer`, `code-architect`
-- System-Wide Impact → `architect`, `performance-optimizer`, `security-reviewer`
+- Implementation Units → `code-explorer`, `architect`
+- System-Wide Impact → `architect`, `genie:perf`, `genie:security`
 - Risks/Dependencies → 리스크 유형에 맞는 전문가 에이전트
 
 심화 필요 없으면 "Confidence check passed" 보고 후 핸드오프로 진행.
@@ -115,9 +132,14 @@ R/A/F/AE-ID를 Requirements, Units, 테스트 시나리오에 추적하십시오
 
 **핸드오프** (저장된 플랜 상대 경로 포함):
 
-다음 단계: `/genie:test`
-- Lightweight이거나 즉시 구현 가능하면 `/genie:work` 직행
-- 파이프라인 모드(`LFG`, `disable-model-invocation`)이면 즉시 호출자에게 반환
+자동 핸드오프 조건을 확인하고 즉시 실행한다:
+
+| 조건 | 동작 |
+|------|------|
+| Open Questions 없음 + 신뢰도 체크 통과 | `/genie:test` 즉시 자동 실행 |
+| Lightweight이거나 즉시 구현 가능 | `/genie:work` 직행 |
+| Open Questions ≥ 2개 또는 고위험 도메인 미해결 | 질문 제시 → 답변 후 자동 진행 |
+| 파이프라인 모드(`LFG`, `disable-model-invocation`) | 즉시 호출자에게 반환
 
 ## 8. 비소프트웨어 플래닝
 

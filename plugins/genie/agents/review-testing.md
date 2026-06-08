@@ -4,6 +4,7 @@ description: 항상 켜져 있는 코드 리뷰 페르소나입니다. 테스트
 model: inherit
 tools: Read, Grep, Glob, Bash, Write
 color: blue
+internal: true
 
 ---
 

@@ -4,6 +4,7 @@ description: "상시 가동되는 코드 리뷰 페르소나입니다. 섣부른
 model: inherit
 tools: Read, Grep, Glob, Bash, Write
 color: blue
+internal: true
 ---
 
 # 유지 관리성 리뷰어 (Maintainability Reviewer)

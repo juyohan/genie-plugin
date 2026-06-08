@@ -54,6 +54,22 @@ function log(msg) {
 }
 
 /**
+ * Walk up from startDir looking for go.mod to find the Go module root.
+ * Falls back to startDir when no go.mod is found above it.
+ *
+ * @param {string} startDir - Absolute directory path to start from
+ * @returns {string} Absolute path to the Go module root
+ */
+function findGoModRoot(startDir) {
+  let dir = startDir;
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, 'go.mod'))) return dir;
+    dir = path.dirname(dir);
+  }
+  return startDir;
+}
+
+/**
  * Run quality-gate checks for a single file based on its extension.
  * Skips JS/TS files when Biome is configured (formatting handled upstream).
  *
@@ -118,8 +134,10 @@ function maybeRunQualityGate(filePath) {
         log(`[QualityGate] ${path.basename(filePath)} needs formatting (run gofmt -w)`);
       }
     }
-    const projectRoot = findProjectRoot(path.dirname(filePath));
-    const goVet = exec('go', ['vet', './...'], projectRoot);
+    const projectRoot = findGoModRoot(path.dirname(filePath));
+    const relDir = path.relative(projectRoot, path.dirname(filePath));
+    const packagePath = './' + (relDir || '.');
+    const goVet = exec('go', ['vet', packagePath], projectRoot);
     if (goVet.status !== 0 && goVet.stderr) {
       log(`[QualityGate] go vet: ${goVet.stderr.trim().split('\n')[0]}`);
     }
