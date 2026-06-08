@@ -1,5 +1,5 @@
 ---
-description: Create a well-structured git commit with a clear, value-focused message
+description: 명확하고 가치 중심적인 메시지로 git 커밋을 생성합니다
 model: haiku
 ---
 

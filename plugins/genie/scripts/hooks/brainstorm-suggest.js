@@ -98,6 +98,10 @@ function isExploratory(message) {
   return EXPLORE_PATTERNS.some(p => p.test(message));
 }
 
+const EXPLORE_DIRECTIVE =
+  '[Genie] 사용자가 방향·의견·접근법을 묻고 있습니다. ' +
+  '직접 답변하기 전에 "/genie:brainstorm 을 먼저 실행하면 생각을 체계적으로 정리할 수 있습니다 — 실행해 볼까요?" 라고 제안하십시오.\n\n';
+
 function run(rawInput) {
   const message = extractMessage(rawInput);
 
@@ -107,11 +111,19 @@ function run(rawInput) {
   }
 
   if (isExploratory(message)) {
-    // Inject directive into stdout so Claude steers toward brainstorm
-    process.stdout.write(
-      '[Genie] 사용자가 방향·의견·접근법을 묻고 있습니다. ' +
-      '직접 답변하기 전에 "/genie:brainstorm 을 먼저 실행하면 생각을 체계적으로 정리할 수 있습니다 — 실행해 볼까요?" 라고 제안하십시오.\n\n'
-    );
+    // Inject directive into the prompt field so stdout stays valid JSON
+    try {
+      const data = JSON.parse(rawInput);
+      // Use value-based fallback (matching extractMessage logic) to avoid injecting into wrong field
+      const promptKey = data.prompt ? 'prompt' : data.content ? 'content' : data.message ? 'message' : null;
+      if (promptKey) {
+        const original = String(data[promptKey]);
+        process.stdout.write(JSON.stringify({ ...data, [promptKey]: EXPLORE_DIRECTIVE + original }));
+        return;
+      }
+    } catch (err) {
+      process.stderr.write(`[brainstorm-suggest] JSON 재직렬화 실패, pass-through: ${err.message}\n`);
+    }
   } else if (isFeatureRequest(message)) {
     process.stderr.write(
       '[Genie] 새 기능/구현 요청 감지. ' +

@@ -1,5 +1,5 @@
 ---
-description: Execute implementation against the plan — ship complete features
+description: 플랜에 따라 구현을 실행합니다 — 기능을 완성해서 배포합니다
 model: sonnet
 ---
 

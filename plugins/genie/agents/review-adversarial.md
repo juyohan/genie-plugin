@@ -4,6 +4,7 @@ description: 조건부 코드 리뷰 페르소나로, 변경 사항이 크거나
 model: inherit
 tools: Read, Grep, Glob, Bash, Write
 color: red
+internal: true
 
 ---
 

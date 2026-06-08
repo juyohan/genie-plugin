@@ -1,5 +1,5 @@
 ---
-description: Collaborative requirements definition — think through what to build, one question at a time
+description: 협력적 요구사항 정의 — 한 번에 하나씩 질문하며 만들 것을 명확히 합니다
 model: sonnet
 ---
 

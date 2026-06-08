@@ -1,5 +1,5 @@
 ---
-description: Test-driven development — write failing tests first (RED to GREEN to IMPROVE)
+description: 테스트 주도 개발 — 실패 테스트 먼저 작성 (RED → GREEN → IMPROVE)
 model: sonnet
 ---
 
@@ -17,7 +17,7 @@ Invoke the **`genie:test`** agent with the task description from `$ARGUMENTS`. T
 2. **GREEN** — Implement the minimum code to make tests pass
 3. **IMPROVE** — Refactor while keeping tests green, verify 80%+ coverage
 
-**Workflow position:** `/genie:plan` → `genie:test` → `/genie:work`
+**Workflow position:** `/genie:plan` → `/genie:test` → `/genie:work`
 
 **Saves output to:** `docs/tests/YYYY/MM/DD-<title>.md`
 

@@ -1,5 +1,5 @@
 ---
-description: Push the current branch, automatically handling AWS CodeCommit MFA when needed
+description: 현재 브랜치를 원격에 푸시합니다. AWS CodeCommit MFA가 필요하면 자동으로 처리합니다
 model: sonnet
 ---
 

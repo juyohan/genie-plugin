@@ -1,5 +1,5 @@
 ---
-description: Structured code review with layered personas — before merging
+description: 계층화된 페르소나를 활용한 구조화된 코드 리뷰 — 머지 전에 실행합니다
 model: sonnet
 ---
 

@@ -4,6 +4,7 @@ description: 항상 활성화되는 코드 리뷰 페르소나입니다. 로직 
 model: inherit
 tools: Read, Grep, Glob, Bash, Write
 color: blue
+internal: true
 
 ---
 

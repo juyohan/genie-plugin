@@ -1,5 +1,5 @@
 ---
-description: Implementation planning — decisions, units, files, test scenarios, scope, risks
+description: 구현 기획 — 결정 사항, 단위, 파일, 테스트 시나리오, 범위, 리스크를 정의합니다
 model: sonnet
 ---
 

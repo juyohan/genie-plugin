@@ -2,6 +2,7 @@
 .claude/genie/
 .claude/worktrees/
 .claude/settings.json
+.claude/settings.local.json
 
 # Runtime lock files
 plugins/genie/.in_use/

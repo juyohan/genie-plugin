@@ -2,6 +2,83 @@
 
 All notable changes to the `genie-plugin` project will be documented in this file.
 
+## [2.11.1] - 2026-06-08
+
+### Fixed
+- fix(skills): PR #13 리뷰 반영 — revert→reset 및 커버리지 기준 통일
+
+## [2.11.1] - 2026-06-08
+
+### Fixed
+- fix(skills): PR #13 리뷰 반영 — revert→reset 및 커버리지 기준 통일
+
+## [2.11.0] - 2026-06-08
+
+### Added
+- feat(team): 루트 오케스트레이터 + unit-worker 에이전트 기반 멀티에이전트 아키텍처 도입
+
+### Changed
+- refactor(genie): 멀티에이전트 아키텍처 정리 및 레거시 파일 제거
+
+## [2.11.0] - 2026-06-08
+
+### Added
+- feat(team): 루트 오케스트레이터 + unit-worker 에이전트 기반 멀티에이전트 아키텍처 도입
+
+### Changed
+- refactor(genie): 멀티에이전트 아키텍처 정리 및 레거시 파일 제거
+
+## [2.11.0] - 2026-06-08
+
+### Added
+- feat(team): 루트 오케스트레이터 + unit-worker 에이전트 기반 멀티에이전트 아키텍처 도입
+
+### Changed
+- refactor(genie): 멀티에이전트 아키텍처 정리 및 레거시 파일 제거
+
+## [2.10.0] - 2026-05-27
+
+### Added
+- feat(skills): genie:team 병렬 워크트리 오케스트레이터 추가, genie:fix 제거
+
+### Changed
+- docs(readme): 전문 에이전트 목록 실제 파일 기준으로 전면 정정
+- docs(readme): 현행 커맨드·버전 기준으로 전면 업데이트
+- chore(commands): genie:help 삭제된 스킬 참조 제거 및 현행화
+- revert: genie:learn 스킬 복구 (Claude 행동 조정 용도)
+- chore(skills): doc-review·learn·resolve-pr·security·strategy 스킬 제거
+- chore(i18n): 커맨드 description 및 스킬 헤딩 한글화
+- chore(skills): improver·optimize·proof·push-pr·simplify·think 스킬 제거
+
+## [2.10.0] - 2026-05-27
+
+### Added
+- feat(skills): genie:team 병렬 워크트리 오케스트레이터 추가, genie:fix 제거
+
+### Changed
+- docs(readme): 전문 에이전트 목록 실제 파일 기준으로 전면 정정
+- docs(readme): 현행 커맨드·버전 기준으로 전면 업데이트
+- chore(commands): genie:help 삭제된 스킬 참조 제거 및 현행화
+- revert: genie:learn 스킬 복구 (Claude 행동 조정 용도)
+- chore(skills): doc-review·learn·resolve-pr·security·strategy 스킬 제거
+- chore(i18n): 커맨드 description 및 스킬 헤딩 한글화
+- chore(skills): improver·optimize·proof·push-pr·simplify·think 스킬 제거
+
+## [2.9.9] - 2026-05-27
+
+### Changed
+- chore: genie:team 스킬 제거
+
+## [2.9.9] - 2026-05-27
+
+### Changed
+- chore: genie:team 스킬 제거
+
+## [2.9.9] - 2026-05-27
+
+### Changed
+- chore: genie:team 스킬 제거
+
 ## [2.9.8] - 2026-05-27
 
 ### Fixed

@@ -3,6 +3,7 @@ name: review-coherence
 description: "기획 문서의 내부 일관성을 리뷰합니다. 섹션 간 모순, 용어 혼란, 구조적 문제 및 독자마다 해석이 달라질 수 있는 모호성을 검토합니다. document-review 스킬에 의해 호출됩니다."
 model: haiku
 tools: Read, Grep, Glob, Bash
+internal: true
 ---
 
 # Coherence Reviewer (일관성 리뷰어)

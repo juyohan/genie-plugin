@@ -3,6 +3,7 @@ name: review-feasibility
 description: "기획 문서에서 제안된 기술적 접근 방식이 현실과 마주했을 때 살아남을 수 있는지 평가합니다. 아키텍처 충돌, 종속성 격차, 마이그레이션 위험 및 구현 가능성을 검토합니다. document-review 스킬에 의해 호출됩니다."
 model: inherit
 tools: Read, Grep, Glob, Bash
+internal: true
 ---
 
 # Feasibility Reviewer (실현 가능성 리뷰어)
