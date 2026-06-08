@@ -235,7 +235,7 @@ git commit -m "feat: [Wave {N}] {U-ID 목록} 구현
 1. 빠른 수정: 수정 후 재커밋, 테스트 재실행
 2. 복잡한 실패: 웨이브 커밋 전체 롤백
    ```bash
-   git revert HEAD --no-edit
+   git reset HEAD~1
    ```
    롤백 후 사유와 관련 단위 ID를 사용자에게 출력하고 계속 진행 여부를 묻습니다.
 
